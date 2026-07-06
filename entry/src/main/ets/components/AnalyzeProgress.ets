@@ -1,13 +1,21 @@
+import { AnalyzeStatus } from '../model/enums/AnalyzeStatus'
+
 @Component
 export struct AnalyzeProgress {
+  status: AnalyzeStatus = AnalyzeStatus.PENDING
+  progressText: string = ''
+  progressValue: number = 0
+
   build() {
     Column({ space: 8 }) {
-      Text('AnalyzeProgress')
-        .fontSize(18)
+      Text('分析进度')
+        .fontSize(16)
         .fontWeight(FontWeight.Medium)
-      Text('组件骨架已创建，等待后续实现。')
+      Text(`${this.status}  ${this.progressText}`)
         .fontSize(14)
         .fontColor('#666666')
+      Progress({ value: this.progressValue, total: 100, type: ProgressType.Linear })
+        .width('100%')
     }
     .width('100%')
     .padding(16)

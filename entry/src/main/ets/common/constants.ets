@@ -12,3 +12,5 @@ export enum StorageKey {
   PRIVACY_GUARD_ENABLED = 'privacy_guard_enabled',
   LOG_ENABLED = 'log_enabled'
 }
+
+export const API_BASE_URL: string = 'http://127.0.0.1:3000'

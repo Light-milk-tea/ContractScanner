@@ -4,6 +4,8 @@ import { logError } from '../common/logger'
 import { RoutePath } from '../common/constants'
 
 export class RouteParams {
+  taskId?: string
+  baseUrl?: string
 }
 
 function formatBusinessError(error: BusinessError): string {
