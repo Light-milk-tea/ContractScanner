@@ -1,0 +1,11 @@
+{
+  "src": [
+    "pages/HomePage",
+    "pages/ImportPage",
+    "pages/AnalyzingPage",
+    "pages/ResultOverviewPage",
+    "pages/ClauseComparePage",
+    "pages/SettingsPage",
+    "pages/Index"
+  ]
+}

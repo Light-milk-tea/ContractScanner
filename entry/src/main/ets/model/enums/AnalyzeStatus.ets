@@ -1,0 +1,7 @@
+export enum AnalyzeStatus {
+  PENDING = 'PENDING',
+  OCR_RUNNING = 'OCR_RUNNING',
+  LLM_RUNNING = 'LLM_RUNNING',
+  SUCCESS = 'SUCCESS',
+  FAILED = 'FAILED'
+}
