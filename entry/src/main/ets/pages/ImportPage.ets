@@ -1,7 +1,12 @@
+import { common } from '@kit.AbilityKit'
+import { BusinessError } from '@kit.BasicServicesKit'
+import { picker } from '@kit.CoreFileKit'
+
 import { back, goAnalyzing, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
 import { logError } from '../common/logger'
+import { EmptyState } from '../components/EmptyState'
 import { ImportVM } from '../model/viewmodel/ImportVM'
 import { ContractApi } from '../services/api/ContractApi'
 import { FileImportService } from '../services/parser/FileImportService'
@@ -15,6 +20,7 @@ struct ImportPage {
   @State fileName: string = ''
   @State errorText: string = ''
   @State isSubmitting: boolean = false
+  @State canContinueDemo: boolean = false
 
   fileImportService: FileImportService = new FileImportService()
 
@@ -30,7 +36,7 @@ struct ImportPage {
           .fontSize(28)
           .fontWeight(FontWeight.Bold)
       }
-      Text('后续将在这里接入拍照、图片和文档导入能力。')
+      Text('当前已接入本地文件选择，拍照和相册导入将在后续继续补齐。')
         .fontSize(14)
         .fontColor('#666666')
 
@@ -78,7 +84,18 @@ struct ImportPage {
         Text('文件信息')
           .fontSize(16)
           .fontWeight(FontWeight.Medium)
-        TextInput({ text: this.fileUri, placeholder: '文件 URI / 路径（临时可手动输入）' })
+        Row({ space: 8 }) {
+          Button('选择文件')
+            .type(ButtonType.Capsule)
+            .enabled(!this.isSubmitting)
+            .onClick(() => {
+              this.selectLocalFile()
+            })
+          Text('支持 pdf、docx、jpg、png 等常见合同文件')
+            .fontSize(12)
+            .fontColor('#666666')
+        }
+        TextInput({ text: this.fileUri, placeholder: '文件 URI / 路径（未选择时可手动输入）' })
           .width('100%')
           .onChange((value: string) => {
             this.fileUri = value
@@ -110,9 +127,29 @@ struct ImportPage {
       }
 
       if (this.errorText.length > 0) {
-        Text(this.errorText)
-          .fontSize(13)
-          .fontColor('#D64B4B')
+        Column({ space: 12 }) {
+          EmptyState({
+            title: '导入失败',
+            description: this.errorText,
+            hint: this.canContinueDemo ? '可修正服务地址后重试，或继续进入临时 Mock 演示任务。' : '请修正输入信息后重试。'
+          })
+          Row({ space: 8 }) {
+            Button('重试上传')
+              .type(ButtonType.Capsule)
+              .enabled(!this.isSubmitting)
+              .onClick(() => {
+                this.startAnalyze()
+              })
+            if (this.canContinueDemo) {
+              Button('继续演示')
+                .type(ButtonType.Capsule)
+                .onClick(() => {
+                  this.continueDemo()
+                })
+            }
+          }
+        }
+        .width('100%')
       }
 
       Button(this.isSubmitting ? '提交中...' : '开始分析')
@@ -122,7 +159,7 @@ struct ImportPage {
           this.startAnalyze()
         })
 
-      Text('当前页已实现“选择文件 -> 点击分析”的基础交互；实际文件选择器将在后续继续接入。')
+      Text('当前页已支持直接选择本地文件；若系统选择器不可用，也可继续手动填写 URI 进行联调。')
         .fontSize(13)
         .fontColor('#999999')
     }
@@ -135,6 +172,7 @@ struct ImportPage {
 
   async startAnalyze(): Promise<void> {
     this.errorText = ''
+    this.canContinueDemo = false
     if (this.fileUri.length === 0 && this.fileName.length === 0) {
       this.errorText = '请先填写文件 URI/路径或文件名'
       return
@@ -148,21 +186,88 @@ struct ImportPage {
 
       const api = new ContractApi(this.baseUrl)
       const result = await api.uploadContract(uploadRequest)
-
-      const params: RouteParams = new RouteParams()
-      params.taskId = result.taskId
-      params.baseUrl = this.baseUrl
-      await goAnalyzing(this.getUIContext(), params)
+      await this.goToAnalyzing(result.taskId)
     } catch (error) {
       if (error instanceof AppError) {
         this.errorText = `${error.message} (${error.code})`
         logError('Import analyze failed', error.details ?? '', 'ImportPage')
+        this.canContinueDemo = true
         return
       }
       this.errorText = '导入失败，请检查网络与服务地址'
       logError('Import analyze failed', JSON.stringify(error), 'ImportPage')
+      this.canContinueDemo = true
     } finally {
       this.isSubmitting = false
     }
+  }
+
+  async selectLocalFile(): Promise<void> {
+    this.errorText = ''
+    this.importVM.setSelectedSource('LOCAL_FILE')
+
+    const hostContext = this.getHostContext()
+    if (hostContext === undefined) {
+      this.errorText = '当前页面上下文不可用，暂时无法拉起文件选择器'
+      return
+    }
+
+    try {
+      const documentPicker = new picker.DocumentViewPicker(hostContext)
+      const selectOptions = new picker.DocumentSelectOptions()
+      selectOptions.maxSelectNumber = 1
+      selectOptions.fileSuffixFilters = [
+        '合同文档(.pdf,.docx)|.pdf,.docx',
+        '合同图片(.jpg,.jpeg,.png,.webp,.heic)|.jpg,.jpeg,.png,.webp,.heic'
+      ]
+
+      const selectedUris = await documentPicker.select(selectOptions)
+      if (selectedUris.length === 0) {
+        return
+      }
+
+      const meta = this.fileImportService.parseFile(selectedUris[0])
+      const selectedFileType = meta.extension.length > 0 ? meta.extension : `${meta.fileType}`.toLowerCase()
+      this.fileUri = meta.fileUri
+      this.fileName = meta.fileName
+      this.importVM.setSelectedFile(meta.fileName, selectedFileType, meta.fileUri)
+    } catch (error) {
+      if (error instanceof AppError) {
+        this.errorText = `${error.message} (${error.code})`
+        return
+      }
+
+      const businessError = error as BusinessError
+      logError(
+        'Open document picker failed',
+        `code=${businessError.code}, message=${businessError.message}`,
+        'ImportPage'
+      )
+      this.errorText = '拉起文件选择器失败，请稍后重试或手动填写文件 URI'
+    }
+  }
+
+  async continueDemo(): Promise<void> {
+    this.errorText = ''
+    await this.goToAnalyzing(this.buildDemoTaskId())
+  }
+
+  async goToAnalyzing(taskId: string): Promise<void> {
+    const params: RouteParams = new RouteParams()
+    params.taskId = taskId
+    params.baseUrl = this.baseUrl
+    await goAnalyzing(this.getUIContext(), params)
+  }
+
+  buildDemoTaskId(): string {
+    return ContractApi.buildMockTaskId()
+  }
+
+  getHostContext(): common.UIAbilityContext | undefined {
+    const hostContext = this.getUIContext().getHostContext()
+    if (hostContext === undefined) {
+      return undefined
+    }
+    return hostContext as common.UIAbilityContext
   }
 }

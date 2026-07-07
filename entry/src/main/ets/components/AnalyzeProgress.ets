@@ -2,9 +2,9 @@ import { AnalyzeStatus } from '../model/enums/AnalyzeStatus'
 
 @Component
 export struct AnalyzeProgress {
-  status: AnalyzeStatus = AnalyzeStatus.PENDING
-  progressText: string = ''
-  progressValue: number = 0
+  @Prop status: AnalyzeStatus = AnalyzeStatus.PENDING
+  @Prop progressText: string = ''
+  @Prop progressValue: number = 0
 
   build() {
     Column({ space: 8 }) {

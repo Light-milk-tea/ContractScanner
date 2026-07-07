@@ -5,4 +5,5 @@ export interface Contract {
   contractName: string
   status?: AnalyzeStatus
   createdAt?: string
+  baseUrl?: string
 }

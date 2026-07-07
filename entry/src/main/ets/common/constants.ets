@@ -9,6 +9,7 @@ export enum RoutePath {
 
 export enum StorageKey {
   RECENT_TASK_IDS = 'recent_task_ids',
+  RECENT_CONTRACTS = 'recent_contracts',
   PRIVACY_GUARD_ENABLED = 'privacy_guard_enabled',
   LOG_ENABLED = 'log_enabled'
 }

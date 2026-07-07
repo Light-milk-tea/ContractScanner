@@ -1,14 +1,28 @@
 @Component
 export struct EmptyState {
+  @Prop title: string = '暂无内容'
+  @Prop description: string = ''
+  @Prop hint: string = ''
+
   build() {
     Column({ space: 8 }) {
-      Text('EmptyState')
+      Text(this.title)
         .fontSize(18)
         .fontWeight(FontWeight.Medium)
-      Text('组件骨架已创建，等待后续实现。')
-        .fontSize(14)
-        .fontColor('#666666')
+      if (this.description.length > 0) {
+        Text(this.description)
+          .fontSize(14)
+          .fontColor('#444444')
+          .width('100%')
+      }
+      if (this.hint.length > 0) {
+        Text(this.hint)
+          .fontSize(13)
+          .fontColor('#666666')
+          .width('100%')
+      }
     }
+    .alignItems(HorizontalAlign.Start)
     .width('100%')
     .padding(16)
     .borderRadius(16)

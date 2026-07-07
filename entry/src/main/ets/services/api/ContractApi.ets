@@ -1,5 +1,6 @@
 import { AnalyzeStatus } from '../../model/enums/AnalyzeStatus'
 import { AppError, ErrorCode } from '../../common/errors'
+import { MockContractService } from '../mock/MockContractService'
 
 import { HttpClient } from './HttpClient'
 
@@ -67,6 +68,64 @@ export class ContractApi {
 
   constructor(baseUrl: string, httpClient?: HttpClient) {
     this.httpClient = httpClient ?? new HttpClient(baseUrl)
+  }
+
+  static buildMockTaskId(): string {
+    return MockContractService.buildMockTaskId()
+  }
+
+  static isMockTask(taskId: string): boolean {
+    return MockContractService.isMockTask(taskId)
+  }
+
+  static mockNoticeText(): string {
+    return MockContractService.mockNoticeText()
+  }
+
+  static getMockTaskStatus(currentStep: number, taskId: string): TaskStatusResponse {
+    const mockStatus = MockContractService.getTaskStatus(currentStep, taskId)
+    return {
+      taskId: mockStatus.taskId,
+      status: mockStatus.status
+    }
+  }
+
+  static getMockAnalysisResult(taskId: string): AnalysisResultDTO {
+    const mockResult = MockContractService.getAnalysisResult(taskId)
+    const riskStats: RiskStatsDTO = {
+      red: mockResult.riskStats.red,
+      yellow: mockResult.riskStats.yellow,
+      green: mockResult.riskStats.green
+    }
+    const clauses: ClauseRiskDTO[] = []
+    for (let i: number = 0; i < mockResult.clauses.length; i++) {
+      const mockClause = mockResult.clauses[i]
+      const anchors: ClauseAnchorDTO = {
+        page: mockClause.anchors.page,
+        paragraph: mockClause.anchors.paragraph
+      }
+      const clause: ClauseRiskDTO = {
+        clauseId: mockClause.clauseId,
+        title: mockClause.title,
+        originalText: mockClause.originalText,
+        plainText: mockClause.plainText,
+        riskLevel: mockClause.riskLevel,
+        riskReason: mockClause.riskReason,
+        suggestion: mockClause.suggestion,
+        anchors: anchors
+      }
+      clauses.push(clause)
+    }
+    const result: AnalysisResultDTO = {
+      taskId: mockResult.taskId,
+      contractName: mockResult.contractName,
+      overallSummary: mockResult.overallSummary,
+      signBeforeChecklist: mockResult.signBeforeChecklist,
+      riskStats: riskStats,
+      clauses: clauses,
+      generatedAt: mockResult.generatedAt
+    }
+    return result
   }
 
   async uploadContract(request: UploadContractRequest): Promise<UploadContractResponse> {

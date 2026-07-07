@@ -6,6 +6,7 @@ import { RoutePath } from '../common/constants'
 export class RouteParams {
   taskId?: string
   baseUrl?: string
+  clauseId?: string
 }
 
 function formatBusinessError(error: BusinessError): string {
@@ -76,4 +77,8 @@ export async function goClauseCompare(uiContext: UIContext, params?: RouteParams
 
 export async function goSettings(uiContext: UIContext): Promise<void> {
   await push(uiContext, RoutePath.SETTINGS)
+}
+
+export async function goBackToHome(uiContext: UIContext): Promise<void> {
+  await replace(uiContext, RoutePath.HOME)
 }
