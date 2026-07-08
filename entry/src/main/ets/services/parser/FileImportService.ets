@@ -109,16 +109,16 @@ export class FileImportService {
 
   private resolveFileName(fileUri: string, fileName?: string): string {
     if (fileName !== undefined && fileName.length > 0) {
-      return fileName
+      return this.decodeFileName(fileName)
     }
 
     const cleanedUri = this.stripQuery(fileUri)
     const slashIndex = cleanedUri.lastIndexOf('/')
     if (slashIndex >= 0 && slashIndex < cleanedUri.length - 1) {
-      return cleanedUri.substring(slashIndex + 1)
+      return this.decodeFileName(cleanedUri.substring(slashIndex + 1))
     }
 
-    return cleanedUri.length > 0 ? cleanedUri : 'unknown'
+    return cleanedUri.length > 0 ? this.decodeFileName(cleanedUri) : 'unknown'
   }
 
   private extractExtension(fileName: string): string {
@@ -156,5 +156,17 @@ export class FileImportService {
       return uri
     }
     return uri.substring(0, qIndex)
+  }
+
+  private decodeFileName(rawFileName: string): string {
+    if (rawFileName.length === 0) {
+      return rawFileName
+    }
+
+    try {
+      return decodeURIComponent(rawFileName)
+    } catch (_error) {
+      return rawFileName
+    }
   }
 }

@@ -19,6 +19,10 @@ struct HomePage {
     this.loadRecentContracts()
   }
 
+  onPageShow(): void {
+    this.loadRecentContracts()
+  }
+
   build() {
     Scroll() {
       Column({ space: 16 }) {
@@ -60,7 +64,7 @@ struct HomePage {
               .fontColor('#C0392B')
           }
 
-          if (this.homeVM.hasRecentContracts()) {
+          if (this.recentContracts.length > 0) {
             ForEach(this.recentContracts, (contract: Contract) => {
               Button() {
                 Column({ space: 8 }) {
