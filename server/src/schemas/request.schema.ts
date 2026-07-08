@@ -3,6 +3,7 @@ export interface AnalyzeContractRequest {
   fileType: string
   fileUri: string
   businessTag?: string
+  apiKey?: string
 }
 
 export interface AnalyzeContractRequestValidationResult {

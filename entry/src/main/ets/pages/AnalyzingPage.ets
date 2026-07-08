@@ -161,6 +161,9 @@ struct AnalyzingPage {
   async pollOnce(): Promise<void> {
     try {
       const response = await this.api.getTaskStatus(this.taskId)
+      if (response.status === AnalyzeStatus.FAILED) {
+        this.errorText = response.errorMessage ?? '真实分析失败，请检查 API Key、服务地址或模型额度'
+      }
       this.updateStatus(response.status)
     } catch (error) {
       if (error instanceof AppError) {
@@ -184,6 +187,9 @@ struct AnalyzingPage {
     this.syncFromViewModel()
     if (this.analyzeVM.shouldStopPolling()) {
       this.stopPolling()
+    }
+    if (status === AnalyzeStatus.FAILED && this.errorText.length === 0) {
+      this.errorText = '分析任务失败，请修正配置后重试。'
     }
     if (status === AnalyzeStatus.SUCCESS) {
       this.autoOpenResult()

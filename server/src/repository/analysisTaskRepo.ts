@@ -7,26 +7,21 @@ export interface AnalysisTaskRecord {
   taskId: string
   request: AnalyzeContractRequest
   createdAt: number
-  result: AnalysisResultResponse
+  status: AnalyzeStatus
+  result?: AnalysisResultResponse
+  errorMessage?: string
 }
-
-const OCR_DELAY_MS: number = 1500
-const LLM_DELAY_MS: number = 3500
-const SUCCESS_DELAY_MS: number = 5500
 
 export class AnalysisTaskRepo {
   private readonly tasks: Map<string, AnalysisTaskRecord> = new Map<string, AnalysisTaskRecord>()
 
-  createTask(request: AnalyzeContractRequest, result: AnalysisResultResponse): AnalysisTaskRecord {
+  createTask(request: AnalyzeContractRequest): AnalysisTaskRecord {
     const taskId = `task-${randomUUID()}`
     const record: AnalysisTaskRecord = {
       taskId,
       request,
       createdAt: Date.now(),
-      result: {
-        ...result,
-        taskId
-      }
+      status: 'PENDING'
     }
     this.tasks.set(taskId, record)
     return record
@@ -36,23 +31,45 @@ export class AnalysisTaskRepo {
     return this.tasks.get(taskId)
   }
 
+  updateStatus(taskId: string, status: AnalyzeStatus): void {
+    const task = this.tasks.get(taskId)
+    if (task === undefined) {
+      return
+    }
+
+    task.status = status
+  }
+
+  completeTask(taskId: string, result: AnalysisResultResponse): void {
+    const task = this.tasks.get(taskId)
+    if (task === undefined) {
+      return
+    }
+
+    task.status = 'SUCCESS'
+    task.result = {
+      ...result,
+      taskId
+    }
+    task.errorMessage = undefined
+  }
+
+  failTask(taskId: string, errorMessage: string): void {
+    const task = this.tasks.get(taskId)
+    if (task === undefined) {
+      return
+    }
+
+    task.status = 'FAILED'
+    task.errorMessage = errorMessage
+  }
+
   resolveStatus(taskId: string): AnalyzeStatus | undefined {
     const task = this.getTask(taskId)
     if (task === undefined) {
       return undefined
     }
-
-    const elapsedMs = Date.now() - task.createdAt
-    if (elapsedMs < OCR_DELAY_MS) {
-      return 'PENDING'
-    }
-    if (elapsedMs < LLM_DELAY_MS) {
-      return 'OCR_RUNNING'
-    }
-    if (elapsedMs < SUCCESS_DELAY_MS) {
-      return 'LLM_RUNNING'
-    }
-    return 'SUCCESS'
+    return task.status
   }
 }
 

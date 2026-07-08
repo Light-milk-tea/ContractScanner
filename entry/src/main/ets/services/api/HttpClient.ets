@@ -25,6 +25,11 @@ export interface HttpResponse {
   body: string
 }
 
+interface JsonErrorResponse {
+  code?: string
+  message?: string
+}
+
 export class HttpClient {
   private static readonly DEFAULT_READ_TIMEOUT: number = 15000
   private static readonly DEFAULT_CONNECT_TIMEOUT: number = 15000
@@ -134,8 +139,28 @@ export class HttpClient {
   }
 
   private buildHttpStatusError(statusCode: number, responseBody: string): AppError {
+    const parsedError = this.tryParseErrorResponse(responseBody)
+    if (parsedError !== undefined) {
+      const code = parsedError.code ?? ErrorCode.SYS_500
+      const message = parsedError.message ?? '网络请求失败'
+      const detailsFromPayload = `status=${statusCode}, body=${responseBody}`
+      return new AppError(code, message, detailsFromPayload)
+    }
+
     const details = `status=${statusCode}, body=${responseBody}`
     return new AppError(ErrorCode.SYS_500, '网络请求失败', details)
+  }
+
+  private tryParseErrorResponse(responseBody: string): JsonErrorResponse | undefined {
+    try {
+      const parsed = JSON.parse(responseBody) as JsonErrorResponse
+      if (parsed.code === undefined && parsed.message === undefined) {
+        return undefined
+      }
+      return parsed
+    } catch (_error) {
+      return undefined
+    }
   }
 
   private normalizeError(error: Object, requestUrl: string): AppError {

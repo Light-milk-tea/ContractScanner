@@ -15,6 +15,7 @@ import { ResultVM } from '../model/viewmodel/ResultVM'
 import { DTOMapper } from '../services/api/DTOMapper'
 import { ContractApi } from '../services/api/ContractApi'
 import { CacheService } from '../services/storage/CacheService'
+import { UserSettingsService } from '../services/storage/UserSettingsService'
 
 @Entry
 @Component
@@ -23,6 +24,7 @@ struct ResultOverviewPage {
   @State errorText: string = ''
   @State renderTick: number = 0
   @State currentResult?: AnalysisResult = undefined
+  @State isUsingDemoResult: boolean = false
 
   resultVM: ResultVM = new ResultVM()
   cacheService: CacheService = new CacheService()
@@ -56,7 +58,7 @@ struct ResultOverviewPage {
             EmptyState({
               title: '结果加载异常',
               description: this.errorText,
-              hint: this.currentResult !== undefined ? '当前已回退为临时 Mock 数据；可重试拉取真实结果，或继续查看演示内容。' : '请检查服务状态后重试加载结果。'
+              hint: this.isUsingDemoResult ? '当前展示的是临时演示结果；你可以继续查看内容，或重试拉取真实结果。' : '请检查服务状态、API Key 与模型额度后重试加载。'
             })
             Row({ space: 8 }) {
               Button('重试加载')
@@ -64,6 +66,15 @@ struct ResultOverviewPage {
                 .onClick(() => {
                   this.retryLoadResult()
                 })
+              if (!this.isUsingDemoResult) {
+                Button('查看演示结果')
+                  .type(ButtonType.Capsule)
+                  .backgroundColor('#DDE3EE')
+                  .fontColor('#333333')
+                  .onClick(() => {
+                    this.openDemoResult()
+                  })
+              }
             }
           }
           .width('100%')
@@ -154,6 +165,7 @@ struct ResultOverviewPage {
     this.resultVM.setError('')
     this.isLoading = true
     this.errorText = ''
+    this.isUsingDemoResult = false
 
     try {
       if (taskId.length === 0 || ContractApi.isMockTask(taskId)) {
@@ -161,6 +173,7 @@ struct ResultOverviewPage {
         const mockResult = mapper.mapAnalysisResult(mockDto)
         this.currentResult = mockResult
         this.resultVM.setResult(mockResult)
+        this.isUsingDemoResult = true
       } else {
         const api = new ContractApi(baseUrl)
         const dto = await api.getAnalysisResult(taskId)
@@ -169,16 +182,15 @@ struct ResultOverviewPage {
         this.resultVM.setResult(mappedResult)
       }
     } catch (error) {
-      const mockDto = ContractApi.getMockAnalysisResult(taskId)
-      const mockResult = mapper.mapAnalysisResult(mockDto)
-      this.currentResult = mockResult
-      this.resultVM.setResult(mockResult)
+      this.currentResult = undefined
+      this.resultVM.clear()
+      this.resultVM.setRouteContext(taskId, baseUrl)
       if (error instanceof AppError) {
-        this.errorText = `结果获取失败，已回退到 Mock 数据：${error.message}`
+        this.errorText = `结果获取失败：${error.message}`
         this.resultVM.setError(this.errorText)
         logError('Result overview load failed', error.details ?? '', 'ResultOverviewPage')
       } else {
-        this.errorText = '结果获取失败，已回退到 Mock 数据'
+        this.errorText = '结果获取失败，请稍后重试'
         this.resultVM.setError(this.errorText)
         logError('Result overview load failed', JSON.stringify(error), 'ResultOverviewPage')
       }
@@ -193,6 +205,13 @@ struct ResultOverviewPage {
   retryLoadResult(): void {
     this.currentResult = undefined
     this.loadResult()
+  }
+
+  openDemoResult(): void {
+    const demoResult = this.resultVM.loadDemoResult(this.resultVM.taskId)
+    this.currentResult = demoResult
+    this.isUsingDemoResult = true
+    this.errorText = '当前展示的是临时演示结果，真实结果仍可稍后重试拉取。'
   }
 
   async openClauseCompare(clauseId: string): Promise<void> {
@@ -229,6 +248,9 @@ struct ResultOverviewPage {
       baseUrl: this.resultVM.baseUrl
     }
     await this.cacheService.saveRecentContract(hostContext, recentContract)
+    if (!this.isUsingDemoResult && this.resultVM.baseUrl.length > 0) {
+      await new UserSettingsService().saveServiceBaseUrl(hostContext, this.resultVM.baseUrl)
+    }
   }
 
 }

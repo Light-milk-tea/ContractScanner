@@ -15,10 +15,11 @@ struct ClauseComparePage {
   @State isLoading: boolean = true
   @State errorText: string = ''
   @State renderTick: number = 0
+  @State isUsingDemoResult: boolean = false
+  @State currentResult?: AnalysisResult = undefined
+  @State currentClause?: ClauseRisk = undefined
 
   resultVM: ResultVM = new ResultVM()
-  currentResult?: AnalysisResult = undefined
-  currentClause?: ClauseRisk = undefined
 
   aboutToAppear(): void {
     this.loadClauseDetail()
@@ -45,9 +46,21 @@ struct ClauseComparePage {
         }
 
         if (this.errorText.length > 0) {
-          Text(this.errorText)
-            .fontSize(13)
-            .fontColor('#D64B4B')
+          Column({ space: 8 }) {
+            Text(this.errorText)
+              .fontSize(13)
+              .fontColor('#D64B4B')
+            if (!this.isUsingDemoResult) {
+              Button('查看演示条款')
+                .type(ButtonType.Capsule)
+                .backgroundColor('#DDE3EE')
+                .fontColor('#333333')
+                .onClick(() => {
+                  this.openDemoClause()
+                })
+            }
+          }
+          .alignItems(HorizontalAlign.Start)
         }
 
         if (this.currentClause !== undefined) {
@@ -80,12 +93,16 @@ struct ClauseComparePage {
     this.resultVM.setSelectedClauseId(clauseId)
     this.isLoading = true
     this.errorText = ''
+    this.isUsingDemoResult = false
+    this.currentResult = undefined
+    this.currentClause = undefined
 
     try {
       if (taskId.length === 0 || ContractApi.isMockTask(taskId)) {
         const mockDto = ContractApi.getMockAnalysisResult(taskId)
         this.currentResult = mapper.mapAnalysisResult(mockDto)
         this.resultVM.setResult(this.currentResult)
+        this.isUsingDemoResult = true
       } else {
         const api = new ContractApi(baseUrl)
         const dto = await api.getAnalysisResult(taskId)
@@ -103,14 +120,16 @@ struct ClauseComparePage {
         this.errorText = '未找到对应条款，已停留在对照页。'
       }
     } catch (error) {
-      const mockDto = ContractApi.getMockAnalysisResult(taskId)
-      this.currentResult = mapper.mapAnalysisResult(mockDto)
-      this.currentClause = this.currentResult.clauses[0]
+      this.currentResult = undefined
+      this.currentClause = undefined
+      this.resultVM.clear()
+      this.resultVM.setRouteContext(taskId, baseUrl)
+      this.resultVM.setSelectedClauseId(clauseId)
       if (error instanceof AppError) {
-        this.errorText = `条款详情加载失败，已回退到 Mock 数据：${error.message}`
+        this.errorText = `条款详情加载失败：${error.message}`
         logError('Clause compare load failed', error.details ?? '', 'ClauseComparePage')
       } else {
-        this.errorText = '条款详情加载失败，已回退到 Mock 数据'
+        this.errorText = '条款详情加载失败，请稍后重试'
         logError('Clause compare load failed', JSON.stringify(error), 'ClauseComparePage')
       }
     } finally {
@@ -148,5 +167,18 @@ struct ClauseComparePage {
 
   readParams(): RouteParams {
     return this.getUIContext().getRouter().getParams() as RouteParams
+  }
+
+  openDemoClause(): void {
+    const demoResult = this.resultVM.loadDemoResult(this.resultVM.taskId)
+    this.currentResult = demoResult
+    this.isUsingDemoResult = true
+    const selectedClause = this.findClause(demoResult, this.resultVM.selectedClauseId)
+    if (selectedClause !== undefined) {
+      this.currentClause = selectedClause
+    } else if (demoResult.clauses.length > 0) {
+      this.currentClause = demoResult.clauses[0]
+    }
+    this.errorText = '当前展示的是临时演示条款，真实结果仍可稍后重试拉取。'
   }
 }

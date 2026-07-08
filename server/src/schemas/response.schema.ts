@@ -8,6 +8,7 @@ export interface UploadContractResponse {
 export interface TaskStatusResponse {
   taskId: string
   status: AnalyzeStatus
+  errorMessage?: string
 }
 
 export interface ClauseAnchorResponse {

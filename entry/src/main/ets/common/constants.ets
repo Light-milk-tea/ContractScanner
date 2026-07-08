@@ -11,7 +11,9 @@ export enum StorageKey {
   RECENT_TASK_IDS = 'recent_task_ids',
   RECENT_CONTRACTS = 'recent_contracts',
   PRIVACY_GUARD_ENABLED = 'privacy_guard_enabled',
-  LOG_ENABLED = 'log_enabled'
+  LOG_ENABLED = 'log_enabled',
+  MODEL_API_KEY = 'model_api_key',
+  SERVICE_BASE_URL = 'service_base_url'
 }
 
 export const API_BASE_URL: string = 'http://127.0.0.1:3000'

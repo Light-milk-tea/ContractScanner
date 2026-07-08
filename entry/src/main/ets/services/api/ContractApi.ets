@@ -9,6 +9,7 @@ export interface UploadContractRequest {
   fileType: string
   fileUri: string
   businessTag?: string
+  apiKey?: string
 }
 
 export interface UploadContractResponse {
@@ -18,6 +19,7 @@ export interface UploadContractResponse {
 export interface TaskStatusResponse {
   taskId: string
   status: AnalyzeStatus
+  errorMessage?: string
 }
 
 export interface ClauseAnchorDTO {
@@ -58,6 +60,7 @@ interface JsonTaskIdResponse {
 
 interface JsonTaskStatusResponse extends JsonTaskIdResponse {
   status?: string
+  errorMessage?: string
 }
 
 export class ContractApi {
@@ -135,7 +138,8 @@ export class ContractApi {
         fileName: request.fileName,
         fileType: request.fileType,
         fileUri: request.fileUri,
-        businessTag: request.businessTag
+        businessTag: request.businessTag,
+        apiKey: request.apiKey
       })
     )
 
@@ -158,7 +162,7 @@ export class ContractApi {
     }
 
     const typedStatus: AnalyzeStatus = status as AnalyzeStatus
-    return { taskId: parsed.taskId ?? taskId, status: typedStatus }
+    return { taskId: parsed.taskId ?? taskId, status: typedStatus, errorMessage: parsed.errorMessage }
   }
 
   async getAnalysisResult(taskId: string): Promise<AnalysisResultDTO> {

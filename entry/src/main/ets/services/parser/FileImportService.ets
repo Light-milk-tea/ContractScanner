@@ -1,11 +1,14 @@
+import { buffer } from '@kit.ArkTS'
+import { fileIo, ReadOptions } from '@kit.CoreFileKit'
 import { AppError, ErrorCode } from '../../common/errors'
-
+import { logWarn } from '../../common/logger'
 import { UploadContractRequest } from '../api/ContractApi'
 
 export enum ImportFileType {
   IMAGE = 'IMAGE',
   PDF = 'PDF',
   DOCX = 'DOCX',
+  TEXT = 'TEXT',
   UNKNOWN = 'UNKNOWN'
 }
 
@@ -17,6 +20,8 @@ export interface ImportedFileMeta {
 }
 
 export class FileImportService {
+  private static readonly TEXT_CHUNK_SIZE: number = 4096
+
   parseFile(fileUri: string, fileName?: string): ImportedFileMeta {
     const resolvedName = this.resolveFileName(fileUri, fileName)
     const extension = this.extractExtension(resolvedName)
@@ -42,6 +47,56 @@ export class FileImportService {
       fileType,
       fileUri: meta.fileUri,
       businessTag
+    }
+  }
+
+  isTextFile(meta: ImportedFileMeta): boolean {
+    return meta.fileType === ImportFileType.TEXT
+  }
+
+  buildInlineTextUri(textContent: string): string {
+    return `inline://${textContent}`
+  }
+
+  readTextFile(fileUri: string): string {
+    let file: fileIo.File | null = null
+    try {
+      file = fileIo.openSync(fileUri, fileIo.OpenMode.READ_ONLY)
+      let offset: number = 0
+      const chunks: string[] = []
+      while (true) {
+        const arrayBuffer = new ArrayBuffer(FileImportService.TEXT_CHUNK_SIZE)
+        const readOptions: ReadOptions = {
+          offset: offset,
+          length: arrayBuffer.byteLength
+        }
+        const readLength = fileIo.readSync(file.fd, arrayBuffer, readOptions)
+        if (readLength <= 0) {
+          break
+        }
+        chunks.push(buffer.from(arrayBuffer, 0, readLength).toString())
+        offset += readLength
+      }
+      const textContent = chunks.join('').trim()
+      if (textContent.length === 0) {
+        throw new AppError(ErrorCode.IMPORT_001, '文本文件内容为空', fileUri)
+      }
+      return textContent
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error
+      }
+      const message = error instanceof Error ? error.message : JSON.stringify(error)
+      throw new AppError(ErrorCode.IMPORT_001, '读取文本文件失败', `${fileUri} | ${message}`)
+    } finally {
+      if (file !== null) {
+        try {
+          fileIo.closeSync(file)
+        } catch (error) {
+          const message = error instanceof Error ? error.message : JSON.stringify(error)
+          logWarn(`Close text file failed: ${fileUri} | ${message}`, 'FileImportService')
+        }
+      }
     }
   }
 
@@ -88,6 +143,10 @@ export class FileImportService {
       return ImportFileType.IMAGE
     }
 
+    if (extension === 'txt' || extension === 'md' || extension === 'markdown') {
+      return ImportFileType.TEXT
+    }
+
     return ImportFileType.UNKNOWN
   }
 
@@ -99,4 +158,3 @@ export class FileImportService {
     return uri.substring(0, qIndex)
   }
 }
-

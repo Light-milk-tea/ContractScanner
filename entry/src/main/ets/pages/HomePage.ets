@@ -1,5 +1,5 @@
 import { common } from '@kit.AbilityKit'
-import { goImport, goResultOverview, RouteParams } from '../app/AppRouter'
+import { goImport, goResultOverview, goSettings, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
 import { Contract } from '../model/domain/Contract'
 import { AnalyzeStatus } from '../model/enums/AnalyzeStatus'
@@ -22,14 +22,25 @@ struct HomePage {
   build() {
     Scroll() {
       Column({ space: 16 }) {
-        Column({ space: 6 }) {
-          Text('法言白话')
-            .fontSize(28)
-            .fontWeight(FontWeight.Bold)
-          Text('导入合同并获得白话解读与风险提示')
-            .fontSize(14)
-            .fontColor('#666666')
+        Row() {
+          Column({ space: 6 }) {
+            Text('法言白话')
+              .fontSize(28)
+              .fontWeight(FontWeight.Bold)
+            Text('导入合同并获得白话解读与风险提示')
+              .fontSize(14)
+              .fontColor('#666666')
+          }
+          .alignItems(HorizontalAlign.Start)
+
+          Button('设置')
+            .type(ButtonType.Capsule)
+            .onClick(() => {
+              goSettings(this.getUIContext())
+            })
         }
+        .width('100%')
+        .justifyContent(FlexAlign.SpaceBetween)
         Button('导入合同')
           .width('100%')
           .onClick(() => {
