@@ -9,7 +9,7 @@ const SESSION_STORE_NAME: string = 'contract_scanner_session'
 export class SessionStore {
   store?: preferences.Preferences = undefined
 
-  async getString(context: common.UIAbilityContext, key: string, defaultValue: string): Promise<string> {
+  async getString(context: common.Context, key: string, defaultValue: string): Promise<string> {
     try {
       const sessionStore = await this.getStore(context)
       return sessionStore.getSync(key, defaultValue) as string
@@ -20,7 +20,7 @@ export class SessionStore {
     }
   }
 
-  async putString(context: common.UIAbilityContext, key: string, value: string): Promise<void> {
+  async putString(context: common.Context, key: string, value: string): Promise<void> {
     try {
       const sessionStore = await this.getStore(context)
       sessionStore.putSync(key, value)
@@ -31,7 +31,7 @@ export class SessionStore {
     }
   }
 
-  async delete(context: common.UIAbilityContext, key: string): Promise<void> {
+  async delete(context: common.Context, key: string): Promise<void> {
     try {
       const sessionStore = await this.getStore(context)
       sessionStore.deleteSync(key)
@@ -42,7 +42,7 @@ export class SessionStore {
     }
   }
 
-  async getStore(context: common.UIAbilityContext): Promise<preferences.Preferences> {
+  async getStore(context: common.Context): Promise<preferences.Preferences> {
     if (this.store !== undefined) {
       return this.store
     }

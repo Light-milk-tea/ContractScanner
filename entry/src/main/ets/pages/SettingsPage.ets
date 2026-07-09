@@ -1,5 +1,6 @@
 import { common } from '@kit.AbilityKit'
 import { back } from '../app/AppRouter'
+import { PrivacyGuardService } from '../services/ability/PrivacyGuardService'
 import { UserSettingsService } from '../services/storage/UserSettingsService'
 
 const API_KEY_MIN_LENGTH: number = 16
@@ -14,11 +15,15 @@ struct SettingsPage {
   @State statusText: string = ''
   @State statusColor: string = '#2E6BE6'
   @State hasStoredApiKey: boolean = false
+  @State privacyGuardEnabled: boolean = false
+  @State privacyGuardHint: string = ''
 
   userSettingsService: UserSettingsService = new UserSettingsService()
+  privacyGuardService: PrivacyGuardService = new PrivacyGuardService()
 
   aboutToAppear(): void {
     this.loadApiKey()
+    this.loadPrivacyGuardSetting()
   }
 
   build() {
@@ -113,7 +118,36 @@ struct SettingsPage {
             .fontSize(18)
             .fontWeight(FontWeight.Medium)
 
-          this.buildSettingHint('隐私防窥', '后续将在此接入系统隐私防窥开关与状态同步。')
+          Row() {
+            Column({ space: 4 }) {
+              Text('隐私防窥')
+                .fontSize(16)
+                .fontWeight(FontWeight.Medium)
+              Text('在结果页与条款对照页启用系统隐私窗口，限制截屏与录屏。')
+                .fontSize(13)
+                .fontColor('#666666')
+              Text(this.privacyGuardEnabled ? '当前状态：已开启，敏感页面会自动套用隐私窗口。' : '当前状态：已关闭，敏感页面按普通窗口显示。')
+                .fontSize(12)
+                .fontColor(this.privacyGuardEnabled ? '#2A8F5B' : '#999999')
+              if (this.privacyGuardHint.length > 0) {
+                Text(this.privacyGuardHint)
+                  .fontSize(12)
+                  .fontColor('#2E6BE6')
+              }
+            }
+            .alignItems(HorizontalAlign.Start)
+
+            Button(this.privacyGuardEnabled ? '关闭' : '开启')
+              .type(ButtonType.Capsule)
+              .onClick(() => {
+                this.togglePrivacyGuard()
+              })
+          }
+          .width('100%')
+          .justifyContent(FlexAlign.SpaceBetween)
+          .alignItems(VerticalAlign.Center)
+          .padding({ top: 8, bottom: 8 })
+
           this.buildSettingHint('日志调试', '后续将在此补齐日志开关与调试信息展示能力。')
         }
         .alignItems(HorizontalAlign.Start)
@@ -177,6 +211,17 @@ struct SettingsPage {
     this.hasStoredApiKey = savedApiKey.length > 0
     this.statusText = savedApiKey.length > 0 ? '已读取本地保存的 API Key，可直接修改后重新保存。' : ''
     this.statusColor = '#2E6BE6'
+  }
+
+  async loadPrivacyGuardSetting(): Promise<void> {
+    const hostContext = this.getHostContext()
+    if (hostContext === undefined) {
+      this.privacyGuardHint = '当前页面上下文不可用，暂时无法读取隐私防窥配置'
+      return
+    }
+
+    this.privacyGuardEnabled = await this.privacyGuardService.loadEnabled(hostContext)
+    this.privacyGuardHint = this.privacyGuardEnabled ? '结果页和条款对照页会在进入时自动启用系统隐私窗口。' : ''
   }
 
   validationMessage(): string {
@@ -253,5 +298,20 @@ struct SettingsPage {
     this.hasStoredApiKey = false
     this.statusText = '已清空本地 API Key。'
     this.statusColor = '#2E6BE6'
+  }
+
+  async togglePrivacyGuard(): Promise<void> {
+    const hostContext = this.getHostContext()
+    if (hostContext === undefined) {
+      this.privacyGuardHint = '当前页面上下文不可用，暂时无法切换隐私防窥'
+      return
+    }
+
+    const nextValue = !this.privacyGuardEnabled
+    await this.privacyGuardService.saveEnabled(hostContext, nextValue)
+    this.privacyGuardEnabled = nextValue
+    this.privacyGuardHint = nextValue
+      ? '隐私防窥已开启，进入敏感页面时系统将阻止截屏和录屏。'
+      : '隐私防窥已关闭，后续进入敏感页面时将恢复普通窗口。'
   }
 }

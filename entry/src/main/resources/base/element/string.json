@@ -11,6 +11,14 @@
     {
       "name": "EntryAbility_label",
       "value": "label"
+    },
+    {
+      "name": "EntryFormAbility_desc",
+      "value": "最近合同摘要卡片"
+    },
+    {
+      "name": "EntryFormAbility_label",
+      "value": "合同摘要"
     }
   ]
 }

@@ -18,7 +18,7 @@ interface CachedContractRecord {
 export class CacheService {
   sessionStore: SessionStore = new SessionStore()
 
-  async loadRecentContracts(context: common.UIAbilityContext): Promise<Contract[]> {
+  async loadRecentContracts(context: common.Context): Promise<Contract[]> {
     const cachedRecords = await this.loadCachedRecords(context)
     const contracts: Contract[] = []
     for (let i: number = 0; i < cachedRecords.length; i++) {
@@ -27,7 +27,7 @@ export class CacheService {
     return contracts
   }
 
-  async saveRecentContract(context: common.UIAbilityContext, contract: Contract): Promise<void> {
+  async saveRecentContract(context: common.Context, contract: Contract): Promise<void> {
     if (contract.taskId.length === 0 || contract.contractName.length === 0) {
       logWarn('Skip saving empty recent contract', 'CacheService')
       return
@@ -38,11 +38,11 @@ export class CacheService {
     await this.sessionStore.putString(context, StorageKey.RECENT_CONTRACTS, JSON.stringify(mergedRecords))
   }
 
-  async clearRecentContracts(context: common.UIAbilityContext): Promise<void> {
+  async clearRecentContracts(context: common.Context): Promise<void> {
     await this.sessionStore.delete(context, StorageKey.RECENT_CONTRACTS)
   }
 
-  async loadCachedRecords(context: common.UIAbilityContext): Promise<CachedContractRecord[]> {
+  async loadCachedRecords(context: common.Context): Promise<CachedContractRecord[]> {
     const serialized = await this.sessionStore.getString(context, StorageKey.RECENT_CONTRACTS, '')
     return this.parseRecords(serialized)
   }

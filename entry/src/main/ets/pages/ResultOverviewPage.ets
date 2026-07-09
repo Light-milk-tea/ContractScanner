@@ -14,6 +14,9 @@ import { RiskLevel } from '../model/enums/RiskLevel'
 import { ResultVM } from '../model/viewmodel/ResultVM'
 import { DTOMapper } from '../services/api/DTOMapper'
 import { ContractApi } from '../services/api/ContractApi'
+import { CardService } from '../services/ability/CardService'
+import { ContinuePayload, ContinueService } from '../services/ability/ContinueService'
+import { PrivacyGuardService } from '../services/ability/PrivacyGuardService'
 import { CacheService } from '../services/storage/CacheService'
 import { UserSettingsService } from '../services/storage/UserSettingsService'
 
@@ -25,12 +28,25 @@ struct ResultOverviewPage {
   @State renderTick: number = 0
   @State currentResult?: AnalysisResult = undefined
   @State isUsingDemoResult: boolean = false
+  @State privacyGuardEnabled: boolean = false
 
   resultVM: ResultVM = new ResultVM()
   cacheService: CacheService = new CacheService()
+  cardService: CardService = new CardService()
+  continueService: ContinueService = new ContinueService()
+  privacyGuardService: PrivacyGuardService = new PrivacyGuardService()
 
   aboutToAppear(): void {
     this.loadResult()
+  }
+
+  onPageShow(): void {
+    this.applySensitiveProtection()
+  }
+
+  onPageHide(): void {
+    this.releaseSensitiveProtection()
+    this.deactivateContinuation()
   }
 
   build() {
@@ -81,6 +97,12 @@ struct ResultOverviewPage {
         }
 
         if (this.currentResult !== undefined) {
+          if (this.privacyGuardEnabled) {
+            Text('已开启隐私防窥，当前页面会限制截屏和录屏。')
+              .fontSize(12)
+              .fontColor('#2E6BE6')
+          }
+
           SummaryCard({
             contractName: this.currentResult.contractName,
             overallSummary: this.currentResult.overallSummary,
@@ -156,7 +178,7 @@ struct ResultOverviewPage {
   }
 
   async loadResult(): Promise<void> {
-    const params = this.readParams()
+    const params = await this.readParams()
     const taskId: string = params.taskId ?? ''
     const baseUrl: string = params.baseUrl ?? API_BASE_URL
     const mapper = new DTOMapper()
@@ -196,6 +218,8 @@ struct ResultOverviewPage {
       }
     } finally {
       await this.saveRecentContract()
+      await this.activateContinuation()
+      await this.applySensitiveProtection()
       this.isLoading = false
       this.resultVM.setLoading(false)
       this.renderTick = this.renderTick + 1
@@ -222,8 +246,24 @@ struct ResultOverviewPage {
     await goClauseCompare(this.getUIContext(), params)
   }
 
-  readParams(): RouteParams {
-    return this.getUIContext().getRouter().getParams() as RouteParams
+  async readParams(): Promise<RouteParams> {
+    const routerParams = this.getUIContext().getRouter().getParams() as RouteParams
+    const hasRouterTaskId = routerParams.taskId !== undefined && (routerParams.taskId ?? '').length > 0
+    const hasRouterBaseUrl = routerParams.baseUrl !== undefined && (routerParams.baseUrl ?? '').length > 0
+    if (hasRouterTaskId || hasRouterBaseUrl) {
+      return routerParams
+    }
+
+    const hostContext = this.getHostContext()
+    if (hostContext === undefined) {
+      return routerParams
+    }
+
+    const pendingPayload = await this.continueService.consumePendingRoute(hostContext)
+    if (pendingPayload === undefined) {
+      return routerParams
+    }
+    return this.continueService.toRouteParams(pendingPayload)
   }
 
   getHostContext(): common.UIAbilityContext | undefined {
@@ -251,6 +291,50 @@ struct ResultOverviewPage {
     if (!this.isUsingDemoResult && this.resultVM.baseUrl.length > 0) {
       await new UserSettingsService().saveServiceBaseUrl(hostContext, this.resultVM.baseUrl)
     }
+    await this.cardService.refreshRegisteredForms(hostContext)
+  }
+
+  async applySensitiveProtection(): Promise<void> {
+    const hostContext = this.getHostContext()
+    if (hostContext === undefined) {
+      return
+    }
+
+    this.privacyGuardEnabled = await this.privacyGuardService.loadEnabled(hostContext)
+    await this.privacyGuardService.applyWindowPrivacyMode(hostContext, this.privacyGuardEnabled)
+  }
+
+  async releaseSensitiveProtection(): Promise<void> {
+    const hostContext = this.getHostContext()
+    if (hostContext === undefined || !this.privacyGuardEnabled) {
+      return
+    }
+    await this.privacyGuardService.applyWindowPrivacyMode(hostContext, false)
+  }
+
+  async activateContinuation(): Promise<void> {
+    const hostContext = this.getHostContext()
+    if (hostContext === undefined || this.currentResult === undefined) {
+      return
+    }
+
+    const payload: ContinuePayload = this.continueService.buildResultPayload(
+      this.currentResult.taskId,
+      this.resultVM.baseUrl,
+      this.currentResult.contractName,
+      this.currentResult.generatedAt
+    )
+    await this.continueService.saveLastViewedResult(hostContext, payload)
+    this.continueService.setMissionContinueActive(hostContext, true)
+  }
+
+  async deactivateContinuation(): Promise<void> {
+    const hostContext = this.getHostContext()
+    if (hostContext === undefined) {
+      return
+    }
+    this.continueService.setMissionContinueActive(hostContext, false)
+    await this.continueService.clearLastViewedResult(hostContext)
   }
 
 }

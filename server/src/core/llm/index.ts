@@ -125,12 +125,52 @@ function readMessageContent(response: OpenAiCompatibleResponse): string {
 }
 
 function extractJsonObject(rawContent: string): string {
-  const startIndex = rawContent.indexOf('{')
-  const endIndex = rawContent.lastIndexOf('}')
-  if (startIndex < 0 || endIndex <= startIndex) {
+  const fencedContent = rawContent.replace(/```json|```/gi, '').trim()
+  const startIndex = fencedContent.indexOf('{')
+  if (startIndex < 0) {
     throw new Error(`模型未返回合法 JSON：${rawContent}`)
   }
-  return rawContent.substring(startIndex, endIndex + 1)
+
+  let depth: number = 0
+  let inString: boolean = false
+  let escaped: boolean = false
+
+  for (let i: number = startIndex; i < fencedContent.length; i++) {
+    const currentChar = fencedContent[i]
+
+    if (escaped) {
+      escaped = false
+      continue
+    }
+
+    if (currentChar === '\\') {
+      escaped = true
+      continue
+    }
+
+    if (currentChar === '"') {
+      inString = !inString
+      continue
+    }
+
+    if (inString) {
+      continue
+    }
+
+    if (currentChar === '{') {
+      depth += 1
+      continue
+    }
+
+    if (currentChar === '}') {
+      depth -= 1
+      if (depth === 0) {
+        return fencedContent.substring(startIndex, i + 1)
+      }
+    }
+  }
+
+  throw new Error(`模型未返回完整 JSON：${rawContent}`)
 }
 
 function normalizeRiskLevel(rawRiskLevel: string | undefined, index: number): RiskLevel {

@@ -1,3 +1,4 @@
+import { common } from '@kit.AbilityKit'
 import { back, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
@@ -8,6 +9,7 @@ import { ClauseRisk } from '../model/domain/ClauseRisk'
 import { ResultVM } from '../model/viewmodel/ResultVM'
 import { DTOMapper } from '../services/api/DTOMapper'
 import { ContractApi } from '../services/api/ContractApi'
+import { PrivacyGuardService } from '../services/ability/PrivacyGuardService'
 
 @Entry
 @Component
@@ -18,11 +20,21 @@ struct ClauseComparePage {
   @State isUsingDemoResult: boolean = false
   @State currentResult?: AnalysisResult = undefined
   @State currentClause?: ClauseRisk = undefined
+  @State privacyGuardEnabled: boolean = false
 
   resultVM: ResultVM = new ResultVM()
+  privacyGuardService: PrivacyGuardService = new PrivacyGuardService()
 
   aboutToAppear(): void {
     this.loadClauseDetail()
+  }
+
+  onPageShow(): void {
+    this.applySensitiveProtection()
+  }
+
+  onPageHide(): void {
+    this.releaseSensitiveProtection()
   }
 
   build() {
@@ -64,6 +76,12 @@ struct ClauseComparePage {
         }
 
         if (this.currentClause !== undefined) {
+          if (this.privacyGuardEnabled) {
+            Text('已开启隐私防窥，当前条款详情页会限制截屏和录屏。')
+              .fontSize(12)
+              .fontColor('#2E6BE6')
+          }
+
           ClauseBlock({
             title: this.currentClause.title,
             originalText: this.currentClause.originalText,
@@ -169,6 +187,14 @@ struct ClauseComparePage {
     return this.getUIContext().getRouter().getParams() as RouteParams
   }
 
+  getHostContext(): common.UIAbilityContext | undefined {
+    const hostContext = this.getUIContext().getHostContext()
+    if (hostContext === undefined) {
+      return undefined
+    }
+    return hostContext as common.UIAbilityContext
+  }
+
   openDemoClause(): void {
     const demoResult = this.resultVM.loadDemoResult(this.resultVM.taskId)
     this.currentResult = demoResult
@@ -180,5 +206,23 @@ struct ClauseComparePage {
       this.currentClause = demoResult.clauses[0]
     }
     this.errorText = '当前展示的是临时演示条款，真实结果仍可稍后重试拉取。'
+  }
+
+  async applySensitiveProtection(): Promise<void> {
+    const hostContext = this.getHostContext()
+    if (hostContext === undefined) {
+      return
+    }
+
+    this.privacyGuardEnabled = await this.privacyGuardService.loadEnabled(hostContext)
+    await this.privacyGuardService.applyWindowPrivacyMode(hostContext, this.privacyGuardEnabled)
+  }
+
+  async releaseSensitiveProtection(): Promise<void> {
+    const hostContext = this.getHostContext()
+    if (hostContext === undefined || !this.privacyGuardEnabled) {
+      return
+    }
+    await this.privacyGuardService.applyWindowPrivacyMode(hostContext, false)
   }
 }
