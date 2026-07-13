@@ -4,7 +4,7 @@ import { API_BASE_URL, RoutePath } from '../common/constants'
 import { AppError, ErrorCode } from '../common/errors'
 import { logError } from '../common/logger'
 import { AnalyzeProgress } from '../components/AnalyzeProgress'
-import { EmptyState } from '../components/EmptyState'
+import { EmptyState, EmptyStateType } from '../components/EmptyState'
 import { AnalyzeStatus } from '../model/enums/AnalyzeStatus'
 import { AnalyzeVM } from '../model/viewmodel/AnalyzeVM'
 import { ContractApi } from '../services/api/ContractApi'
@@ -78,7 +78,8 @@ struct AnalyzingPage {
         EmptyState({
           title: '分析未完成',
           description: this.errorText.length > 0 ? this.errorText : '分析任务执行失败，请重试或返回重新发起分析。',
-          hint: '修正服务地址或服务状态后，可点击“重试”重新发起轮询。'
+          hint: '修正服务地址或服务状态后，可点击“重试”重新发起轮询。',
+          stateType: EmptyStateType.ERROR
         })
       }
 

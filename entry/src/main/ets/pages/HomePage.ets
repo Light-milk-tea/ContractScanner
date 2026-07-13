@@ -1,6 +1,7 @@
 import { common } from '@kit.AbilityKit'
 import { goImport, goResultOverview, goSettings, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
+import { EmptyState, EmptyStateType } from '../components/EmptyState'
 import { Contract } from '../model/domain/Contract'
 import { AnalyzeStatus } from '../model/enums/AnalyzeStatus'
 import { HomeVM } from '../model/viewmodel/HomeVM'
@@ -59,12 +60,30 @@ struct HomePage {
             .fontColor('#666666')
 
           if (this.recentErrorText.length > 0) {
-            Text(this.recentErrorText)
-              .fontSize(13)
-              .fontColor('#C0392B')
-          }
-
-          if (this.recentContracts.length > 0) {
+            Column({ space: 12 }) {
+              EmptyState({
+                title: '最近记录读取失败',
+                description: this.recentErrorText,
+                hint: '可点击重试重新加载本地缓存，也可以直接发起新的合同分析。',
+                stateType: EmptyStateType.ERROR
+              })
+              Row({ space: 8 }) {
+                Button('重试读取')
+                  .type(ButtonType.Capsule)
+                  .onClick(() => {
+                    this.loadRecentContracts()
+                  })
+                Button('导入合同')
+                  .type(ButtonType.Capsule)
+                  .backgroundColor('#DDE3EE')
+                  .fontColor('#333333')
+                  .onClick(() => {
+                    goImport(this.getUIContext())
+                  })
+              }
+            }
+            .width('100%')
+          } else if (this.recentContracts.length > 0) {
             ForEach(this.recentContracts, (contract: Contract) => {
               Button() {
                 Column({ space: 8 }) {
@@ -108,9 +127,20 @@ struct HomePage {
               })
             }, (contract: Contract) => contract.taskId)
           } else {
-            Text('暂无最近记录，完成一次分析并进入结果页后会显示在这里。')
-              .fontSize(14)
-              .fontColor('#666666')
+            Column({ space: 12 }) {
+              EmptyState({
+                title: '暂无最近记录',
+                description: '完成一次分析并进入结果页后，最近 5 条记录会显示在这里。',
+                hint: '建议先导入一份演示合同，跑通上传、分析和结果查看主链路。',
+                stateType: EmptyStateType.EMPTY
+              })
+              Button('开始分析')
+                .type(ButtonType.Capsule)
+                .onClick(() => {
+                  goImport(this.getUIContext())
+                })
+            }
+            .width('100%')
           }
         }
         .alignItems(HorizontalAlign.Start)

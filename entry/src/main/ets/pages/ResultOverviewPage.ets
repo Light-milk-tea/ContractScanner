@@ -3,7 +3,7 @@ import { back, goClauseCompare, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
 import { logError } from '../common/logger'
-import { EmptyState } from '../components/EmptyState'
+import { EmptyState, EmptyStateType } from '../components/EmptyState'
 import { RiskBadge } from '../components/RiskBadge'
 import { SummaryCard } from '../components/SummaryCard'
 import { AnalysisResult } from '../model/domain/AnalysisResult'
@@ -74,7 +74,8 @@ struct ResultOverviewPage {
             EmptyState({
               title: '结果加载异常',
               description: this.errorText,
-              hint: this.isUsingDemoResult ? '当前展示的是临时演示结果；你可以继续查看内容，或重试拉取真实结果。' : '请检查服务状态、API Key 与模型额度后重试加载。'
+              hint: this.isUsingDemoResult ? '当前展示的是临时演示结果；你可以继续查看内容，或重试拉取真实结果。' : '请检查服务状态、API Key 与模型额度后重试加载。',
+              stateType: EmptyStateType.ERROR
             })
             Row({ space: 8 }) {
               Button('重试加载')

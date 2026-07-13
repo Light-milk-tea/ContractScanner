@@ -4,6 +4,7 @@ import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
 import { logError } from '../common/logger'
 import { ClauseBlock } from '../components/ClauseBlock'
+import { EmptyState, EmptyStateType } from '../components/EmptyState'
 import { AnalysisResult } from '../model/domain/AnalysisResult'
 import { ClauseRisk } from '../model/domain/ClauseRisk'
 import { ResultVM } from '../model/viewmodel/ResultVM'
@@ -58,21 +59,32 @@ struct ClauseComparePage {
         }
 
         if (this.errorText.length > 0) {
-          Column({ space: 8 }) {
-            Text(this.errorText)
-              .fontSize(13)
-              .fontColor('#D64B4B')
-            if (!this.isUsingDemoResult) {
-              Button('查看演示条款')
+          Column({ space: 12 }) {
+            EmptyState({
+              title: '条款详情加载异常',
+              description: this.errorText,
+              hint: this.isUsingDemoResult ? '当前页面已回退到演示条款，可继续查看内容，或返回结果页重新进入。' : '可重试加载真实条款，或先切换到演示条款继续讲解。',
+              stateType: EmptyStateType.ERROR
+            })
+            Row({ space: 8 }) {
+              Button('重试加载')
                 .type(ButtonType.Capsule)
-                .backgroundColor('#DDE3EE')
-                .fontColor('#333333')
                 .onClick(() => {
-                  this.openDemoClause()
+                  this.loadClauseDetail()
                 })
+              if (!this.isUsingDemoResult) {
+                Button('查看演示条款')
+                  .type(ButtonType.Capsule)
+                  .backgroundColor('#DDE3EE')
+                  .fontColor('#333333')
+                  .onClick(() => {
+                    this.openDemoClause()
+                  })
+              }
             }
           }
           .alignItems(HorizontalAlign.Start)
+          .width('100%')
         }
 
         if (this.currentClause !== undefined) {

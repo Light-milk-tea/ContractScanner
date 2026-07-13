@@ -6,7 +6,7 @@ import { back, goAnalyzing, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
 import { logError } from '../common/logger'
-import { EmptyState } from '../components/EmptyState'
+import { EmptyState, EmptyStateType } from '../components/EmptyState'
 import { Contract } from '../model/domain/Contract'
 import { ImportVM } from '../model/viewmodel/ImportVM'
 import { ContractApi } from '../services/api/ContractApi'
@@ -155,7 +155,8 @@ struct ImportPage {
           EmptyState({
             title: '导入失败',
             description: this.errorText,
-            hint: this.canContinueDemo ? '可修正服务地址后重试，或继续进入临时 Mock 演示任务。' : '请修正输入信息后重试。'
+            hint: this.canContinueDemo ? '可修正服务地址后重试，或继续进入临时 Mock 演示任务。' : '请修正输入信息后重试。',
+            stateType: EmptyStateType.ERROR
           })
           Row({ space: 8 }) {
             Button('重试上传')
