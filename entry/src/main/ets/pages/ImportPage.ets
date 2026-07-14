@@ -5,11 +5,14 @@ import { picker } from '@kit.CoreFileKit'
 import { back, goAnalyzing, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
-import { logError } from '../common/logger'
+import { logError, logInfo } from '../common/logger'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
+import { LoadingState } from '../components/LoadingState'
 import { Contract } from '../model/domain/Contract'
+import { DemoFaultMode, DemoSamplePreset } from '../model/enums/DemoMode'
 import { ImportVM } from '../model/viewmodel/ImportVM'
 import { ContractApi } from '../services/api/ContractApi'
+import { MockContractService } from '../services/mock/MockContractService'
 import { FileImportService } from '../services/parser/FileImportService'
 import { CacheService } from '../services/storage/CacheService'
 import { UserSettingsService } from '../services/storage/UserSettingsService'
@@ -28,6 +31,10 @@ struct ImportPage {
   @State apiKeyNoticeColor: string = '#666666'
   @State baseUrlNoticeText: string = '当前使用默认服务地址。'
   @State baseUrlNoticeColor: string = '#666666'
+  @State selectedDemoPreset: DemoSamplePreset = DemoSamplePreset.NONE
+  @State demoFaultMode: DemoFaultMode = DemoFaultMode.NONE
+  @State demoModeNoticeText: string = '当前未启用异常演示模式。'
+  @State demoModeNoticeColor: string = '#666666'
 
   fileImportService: FileImportService = new FileImportService()
   cacheService: CacheService = new CacheService()
@@ -42,6 +49,7 @@ struct ImportPage {
       Row({ space: 12 }) {
         Button('返回首页')
           .type(ButtonType.Capsule)
+          .enabled(!this.isSubmitting)
           .onClick(() => {
             back(this.getUIContext())
           })
@@ -60,6 +68,7 @@ struct ImportPage {
         Row({ space: 8 }) {
           Button('拍照')
             .type(ButtonType.Capsule)
+            .enabled(!this.isSubmitting)
             .backgroundColor(this.importVM.selectedSource === 'CAMERA' ? '#2E6BE6' : '#DDE3EE')
             .fontColor(this.importVM.selectedSource === 'CAMERA' ? '#FFFFFF' : '#333333')
             .onClick(() => {
@@ -67,6 +76,7 @@ struct ImportPage {
             })
           Button('相册')
             .type(ButtonType.Capsule)
+            .enabled(!this.isSubmitting)
             .backgroundColor(this.importVM.selectedSource === 'GALLERY' ? '#2E6BE6' : '#DDE3EE')
             .fontColor(this.importVM.selectedSource === 'GALLERY' ? '#FFFFFF' : '#333333')
             .onClick(() => {
@@ -74,6 +84,7 @@ struct ImportPage {
             })
           Button('本地文件')
             .type(ButtonType.Capsule)
+            .enabled(!this.isSubmitting)
             .backgroundColor(this.importVM.selectedSource === 'LOCAL_FILE' ? '#2E6BE6' : '#DDE3EE')
             .fontColor(this.importVM.selectedSource === 'LOCAL_FILE' ? '#FFFFFF' : '#333333')
             .onClick(() => {
@@ -88,6 +99,7 @@ struct ImportPage {
           .fontWeight(FontWeight.Medium)
         TextInput({ text: this.baseUrl, placeholder: '例如：http://192.168.x.x:3000' })
           .width('100%')
+          .enabled(!this.isSubmitting)
           .onChange((value: string) => {
             this.baseUrl = value
           })
@@ -102,6 +114,36 @@ struct ImportPage {
         Text(this.apiKeyNoticeText)
           .fontSize(12)
           .fontColor(this.apiKeyNoticeColor)
+      }
+
+      Column({ space: 8 }) {
+        Text('演示样例')
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+        Text('可一键切换高风险 / 低风险样例；用于答辩时快速展示不同分析结果。')
+          .fontSize(12)
+          .fontColor('#666666')
+        Row({ space: 8 }) {
+          Button('高风险样例')
+            .type(ButtonType.Capsule)
+            .enabled(!this.isSubmitting)
+            .backgroundColor(this.selectedDemoPreset === DemoSamplePreset.HIGH_RISK ? '#2E6BE6' : '#DDE3EE')
+            .fontColor(this.selectedDemoPreset === DemoSamplePreset.HIGH_RISK ? '#FFFFFF' : '#333333')
+            .onClick(() => {
+              this.applyDemoSample(DemoSamplePreset.HIGH_RISK)
+            })
+          Button('低风险样例')
+            .type(ButtonType.Capsule)
+            .enabled(!this.isSubmitting)
+            .backgroundColor(this.selectedDemoPreset === DemoSamplePreset.LOW_RISK ? '#2E6BE6' : '#DDE3EE')
+            .fontColor(this.selectedDemoPreset === DemoSamplePreset.LOW_RISK ? '#FFFFFF' : '#333333')
+            .onClick(() => {
+              this.applyDemoSample(DemoSamplePreset.LOW_RISK)
+            })
+        }
+        Text(this.demoSampleHint())
+          .fontSize(12)
+          .fontColor('#666666')
       }
 
       Column({ space: 8 }) {
@@ -121,24 +163,30 @@ struct ImportPage {
         }
         TextInput({ text: this.fileUri, placeholder: '文件 URI / 路径（未选择时可手动输入）' })
           .width('100%')
+          .enabled(!this.isSubmitting)
           .onChange((value: string) => {
             this.fileUri = value
+            this.selectedDemoPreset = DemoSamplePreset.NONE
           })
         TextInput({ text: this.fileName, placeholder: '文件名（可选）' })
           .width('100%')
+          .enabled(!this.isSubmitting)
           .onChange((value: string) => {
             this.fileName = value
+            this.selectedDemoPreset = DemoSamplePreset.NONE
           })
         Row({ space: 8 }) {
           Button('填充示例')
+            .enabled(!this.isSubmitting)
             .onClick(() => {
-              this.fileUri = 'inline://甲方应于每月5日前支付租金，逾期每日按应付金额0.5%支付违约金。乙方提前解约需承担剩余租期30%的违约责任。出租方可在验收后30个工作日内单方决定是否退还押金。争议提交合同签订地人民法院处理。'
-              this.fileName = 'demo.pdf'
+              this.applyDemoSample(DemoSamplePreset.HIGH_RISK)
             })
           Button('清空')
+            .enabled(!this.isSubmitting)
             .onClick(() => {
               this.fileUri = ''
               this.fileName = ''
+              this.selectedDemoPreset = DemoSamplePreset.NONE
               this.importVM.reset()
               this.errorText = ''
             })
@@ -148,6 +196,17 @@ struct ImportPage {
             .fontSize(13)
             .fontColor('#666666')
         }
+        Text(this.demoModeNoticeText)
+          .fontSize(12)
+          .fontColor(this.demoModeNoticeColor)
+      }
+
+      if (this.isSubmitting) {
+        LoadingState({
+          title: '正在提交分析任务',
+          description: '我们正在校验文件信息并向服务端创建分析任务。',
+          detail: '提交成功后会自动进入“分析中”页面。'
+        })
       }
 
       if (this.errorText.length > 0) {
@@ -184,6 +243,18 @@ struct ImportPage {
           this.startAnalyze()
         })
 
+      if (this.selectedDemoPreset !== DemoSamplePreset.NONE) {
+        Button('直接演示当前样例')
+          .width('100%')
+          .type(ButtonType.Capsule)
+          .backgroundColor('#DDE3EE')
+          .fontColor('#333333')
+          .enabled(!this.isSubmitting)
+          .onClick(() => {
+            this.startDemoPreview()
+          })
+      }
+
       Text('当前页已支持直接选择本地文件；文本文件会自动读取正文并转为可分析内容，也可在文件 URI 中填入 `inline://合同正文` 形式的文本样例。')
         .fontSize(13)
         .fontColor('#999999')
@@ -205,9 +276,14 @@ struct ImportPage {
 
     this.isSubmitting = true
     try {
+      logInfo(
+        `Start analyze: file=${this.fileName}, source=${this.importVM.selectedSource}, preset=${this.selectedOrDefaultDemoPreset()}, faultMode=${this.demoFaultMode}, baseUrl=${this.baseUrl}`,
+        'ImportPage'
+      )
       const meta = this.fileImportService.parseFile(this.fileUri, this.fileName)
-      const uploadRequest = this.fileImportService.buildUploadRequest(meta)
-      if (this.fileImportService.isTextFile(meta)) {
+      const uploadRequest = this.fileImportService.buildUploadRequest(meta, this.selectedBusinessTag())
+      uploadRequest.debugMode = this.demoFaultMode
+      if (this.fileImportService.isTextFile(meta) && !this.fileImportService.isInlineTextUri(meta.fileUri)) {
         const textContent = this.fileImportService.readTextFile(meta.fileUri)
         uploadRequest.fileUri = this.fileImportService.buildInlineTextUri(textContent)
       }
@@ -228,6 +304,7 @@ struct ImportPage {
 
       const api = new ContractApi(this.baseUrl)
       const result = await api.uploadContract(uploadRequest)
+      logInfo(`Analyze task created: taskId=${result.taskId}`, 'ImportPage')
       await this.goToAnalyzing(result.taskId)
     } catch (error) {
       if (error instanceof AppError) {
@@ -272,6 +349,7 @@ struct ImportPage {
       const selectedFileType = meta.extension.length > 0 ? meta.extension : `${meta.fileType}`.toLowerCase()
       this.fileUri = meta.fileUri
       this.fileName = meta.fileName
+      this.selectedDemoPreset = DemoSamplePreset.NONE
       this.importVM.setSelectedFile(meta.fileName, selectedFileType, meta.fileUri)
     } catch (error) {
       if (error instanceof AppError) {
@@ -291,7 +369,20 @@ struct ImportPage {
 
   async continueDemo(): Promise<void> {
     this.errorText = ''
-    await this.goToAnalyzing(this.buildDemoTaskId())
+    logInfo(
+      `Continue with fallback demo: preset=${this.selectedOrDefaultDemoPreset()}, faultMode=${this.fallbackPreviewFaultMode()}`,
+      'ImportPage'
+    )
+    await this.goToAnalyzing(this.buildDemoTaskId(this.fallbackPreviewFaultMode()))
+  }
+
+  async startDemoPreview(): Promise<void> {
+    this.errorText = ''
+    logInfo(
+      `Open direct demo preview: preset=${this.selectedOrDefaultDemoPreset()}, faultMode=${this.previewFaultMode()}`,
+      'ImportPage'
+    )
+    await this.goToAnalyzing(this.buildDemoTaskId(this.previewFaultMode()))
   }
 
   async goToAnalyzing(taskId: string): Promise<void> {
@@ -301,8 +392,8 @@ struct ImportPage {
     await goAnalyzing(this.getUIContext(), params)
   }
 
-  buildDemoTaskId(): string {
-    return ContractApi.buildMockTaskId()
+  buildDemoTaskId(faultMode: DemoFaultMode): string {
+    return ContractApi.buildMockTaskId(this.selectedOrDefaultDemoPreset(), faultMode)
   }
 
   getHostContext(): common.UIAbilityContext | undefined {
@@ -336,6 +427,7 @@ struct ImportPage {
     const hostContext = this.getHostContext()
     if (hostContext !== undefined) {
       const savedBaseUrl = await this.userSettingsService.loadServiceBaseUrl(hostContext, API_BASE_URL)
+      this.demoFaultMode = await this.userSettingsService.loadDemoFaultMode(hostContext)
       const recentContracts = await this.cacheService.loadRecentContracts(hostContext)
       const recentBaseUrl = this.findLatestRealBaseUrl(recentContracts)
       const effectiveBaseUrl = recentBaseUrl.length > 0 ? recentBaseUrl : savedBaseUrl
@@ -354,7 +446,9 @@ struct ImportPage {
       this.baseUrl = API_BASE_URL
       this.baseUrlNoticeText = '当前页面上下文不可用，暂时无法读取已保存的服务地址。'
       this.baseUrlNoticeColor = '#C0392B'
+      this.demoFaultMode = DemoFaultMode.NONE
     }
+    this.refreshDemoModeNotice()
     await this.refreshApiKeyNotice()
   }
 
@@ -375,5 +469,74 @@ struct ImportPage {
 
   isLoopbackBaseUrl(): boolean {
     return this.baseUrl.indexOf('127.0.0.1') >= 0 || this.baseUrl.indexOf('localhost') >= 0
+  }
+
+  applyDemoSample(preset: DemoSamplePreset): void {
+    const sample = MockContractService.getDemoSample(preset)
+    this.selectedDemoPreset = sample.preset
+    this.fileUri = sample.inlineText
+    this.fileName = sample.fileName
+    this.errorText = ''
+    logInfo(`Apply demo sample: preset=${sample.preset}, fileName=${sample.fileName}`, 'ImportPage')
+  }
+
+  selectedBusinessTag(): string | undefined {
+    if (this.selectedDemoPreset === DemoSamplePreset.NONE) {
+      return undefined
+    }
+    return this.selectedDemoPreset
+  }
+
+  selectedOrDefaultDemoPreset(): DemoSamplePreset {
+    return this.selectedDemoPreset === DemoSamplePreset.NONE ? DemoSamplePreset.HIGH_RISK : this.selectedDemoPreset
+  }
+
+  previewFaultMode(): DemoFaultMode {
+    if (this.demoFaultMode === DemoFaultMode.SERVICE_ERROR) {
+      return DemoFaultMode.NONE
+    }
+    return this.demoFaultMode
+  }
+
+  fallbackPreviewFaultMode(): DemoFaultMode {
+    if (this.demoFaultMode === DemoFaultMode.SERVICE_ERROR) {
+      return DemoFaultMode.DEGRADE_TO_DEMO
+    }
+    return this.previewFaultMode()
+  }
+
+  refreshDemoModeNotice(): void {
+    if (this.demoFaultMode === DemoFaultMode.WEAK_NETWORK) {
+      this.demoModeNoticeText = '当前已开启弱网演示模式：提交后会走本地慢速状态流转。'
+      this.demoModeNoticeColor = '#A36B00'
+      return
+    }
+    if (this.demoFaultMode === DemoFaultMode.TIMEOUT) {
+      this.demoModeNoticeText = '当前已开启超时演示模式：提交后会在分析阶段模拟超时失败。'
+      this.demoModeNoticeColor = '#C0392B'
+      return
+    }
+    if (this.demoFaultMode === DemoFaultMode.SERVICE_ERROR) {
+      this.demoModeNoticeText = '当前已开启服务失败演示模式：点击“开始分析”会直接出现失败提示。'
+      this.demoModeNoticeColor = '#C0392B'
+      return
+    }
+    if (this.demoFaultMode === DemoFaultMode.DEGRADE_TO_DEMO) {
+      this.demoModeNoticeText = '当前已开启降级展示模式：提交后会直接进入本地演示结果。'
+      this.demoModeNoticeColor = '#2E6BE6'
+      return
+    }
+    this.demoModeNoticeText = '当前未启用异常演示模式。'
+    this.demoModeNoticeColor = '#666666'
+  }
+
+  demoSampleHint(): string {
+    if (this.selectedDemoPreset === DemoSamplePreset.LOW_RISK) {
+      return '当前已选择低风险样例：适合演示“整体可签，但建议补充细节”的结果。'
+    }
+    if (this.selectedDemoPreset === DemoSamplePreset.HIGH_RISK) {
+      return '当前已选择高风险样例：适合演示自动续约、押金退还不明等高风险问题。'
+    }
+    return '未选择样例时，仍可导入真实文件；选择样例后也可直接进入本地演示链路。'
   }
 }

@@ -2,8 +2,9 @@ import { common } from '@kit.AbilityKit'
 import { back, goClauseCompare, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
-import { logError } from '../common/logger'
+import { logError, logInfo } from '../common/logger'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
+import { LoadingState } from '../components/LoadingState'
 import { RiskBadge } from '../components/RiskBadge'
 import { SummaryCard } from '../components/SummaryCard'
 import { AnalysisResult } from '../model/domain/AnalysisResult'
@@ -64,9 +65,11 @@ struct ResultOverviewPage {
         }
 
         if (this.isLoading) {
-          Text('正在加载分析结果...')
-            .fontSize(14)
-            .fontColor('#666666')
+          LoadingState({
+            title: '正在加载分析结果',
+            description: '我们正在整理合同摘要、风险统计和条款详情。',
+            detail: '首次进入或切换任务时会自动刷新。'
+          })
         }
 
         if (this.errorText.length > 0) {
@@ -80,12 +83,14 @@ struct ResultOverviewPage {
             Row({ space: 8 }) {
               Button('重试加载')
                 .type(ButtonType.Capsule)
+                .enabled(!this.isLoading)
                 .onClick(() => {
                   this.retryLoadResult()
                 })
               if (!this.isUsingDemoResult) {
                 Button('查看演示结果')
                   .type(ButtonType.Capsule)
+                  .enabled(!this.isLoading)
                   .backgroundColor('#DDE3EE')
                   .fontColor('#333333')
                   .onClick(() => {
@@ -183,6 +188,7 @@ struct ResultOverviewPage {
     const taskId: string = params.taskId ?? ''
     const baseUrl: string = params.baseUrl ?? API_BASE_URL
     const mapper = new DTOMapper()
+    logInfo(`Load result overview: taskId=${taskId}, baseUrl=${baseUrl}`, 'ResultOverviewPage')
     this.resultVM.setRouteContext(taskId, baseUrl)
     this.resultVM.setLoading(true)
     this.resultVM.setError('')
@@ -197,12 +203,14 @@ struct ResultOverviewPage {
         this.currentResult = mockResult
         this.resultVM.setResult(mockResult)
         this.isUsingDemoResult = true
+        logInfo(`Use demo result: taskId=${mockResult.taskId}, contractName=${mockResult.contractName}`, 'ResultOverviewPage')
       } else {
         const api = new ContractApi(baseUrl)
         const dto = await api.getAnalysisResult(taskId)
         const mappedResult = mapper.mapAnalysisResult(dto)
         this.currentResult = mappedResult
         this.resultVM.setResult(mappedResult)
+        logInfo(`Use real result: taskId=${mappedResult.taskId}, contractName=${mappedResult.contractName}`, 'ResultOverviewPage')
       }
     } catch (error) {
       this.currentResult = undefined
@@ -237,9 +245,11 @@ struct ResultOverviewPage {
     this.currentResult = demoResult
     this.isUsingDemoResult = true
     this.errorText = '当前展示的是临时演示结果，真实结果仍可稍后重试拉取。'
+    logInfo(`Fallback to demo result: taskId=${demoResult.taskId}`, 'ResultOverviewPage')
   }
 
   async openClauseCompare(clauseId: string): Promise<void> {
+    logInfo(`Open clause compare: taskId=${this.resultVM.taskId}, clauseId=${clauseId}`, 'ResultOverviewPage')
     const params: RouteParams = new RouteParams()
     params.taskId = this.resultVM.taskId
     params.baseUrl = this.resultVM.baseUrl

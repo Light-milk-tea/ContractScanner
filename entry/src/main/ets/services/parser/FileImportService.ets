@@ -54,6 +54,10 @@ export class FileImportService {
     return meta.fileType === ImportFileType.TEXT
   }
 
+  isInlineTextUri(fileUri: string): boolean {
+    return fileUri.indexOf('inline://') === 0
+  }
+
   buildInlineTextUri(textContent: string): string {
     return `inline://${textContent}`
   }

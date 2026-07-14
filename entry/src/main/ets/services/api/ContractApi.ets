@@ -1,4 +1,5 @@
 import { AnalyzeStatus } from '../../model/enums/AnalyzeStatus'
+import { DemoFaultMode, DemoSamplePreset } from '../../model/enums/DemoMode'
 import { AppError, ErrorCode } from '../../common/errors'
 import { MockContractService } from '../mock/MockContractService'
 
@@ -10,6 +11,7 @@ export interface UploadContractRequest {
   fileUri: string
   businessTag?: string
   apiKey?: string
+  debugMode?: DemoFaultMode
 }
 
 export interface UploadContractResponse {
@@ -73,24 +75,36 @@ export class ContractApi {
     this.httpClient = httpClient ?? new HttpClient(baseUrl)
   }
 
-  static buildMockTaskId(): string {
-    return MockContractService.buildMockTaskId()
+  static buildMockTaskId(
+    preset: DemoSamplePreset = DemoSamplePreset.HIGH_RISK,
+    faultMode: DemoFaultMode = DemoFaultMode.NONE
+  ): string {
+    return MockContractService.buildMockTaskId(preset, faultMode)
   }
 
   static isMockTask(taskId: string): boolean {
     return MockContractService.isMockTask(taskId)
   }
 
-  static mockNoticeText(): string {
-    return MockContractService.mockNoticeText()
+  static mockNoticeText(taskId: string): string {
+    return MockContractService.mockNoticeText(taskId)
   }
 
   static getMockTaskStatus(currentStep: number, taskId: string): TaskStatusResponse {
     const mockStatus = MockContractService.getTaskStatus(currentStep, taskId)
     return {
       taskId: mockStatus.taskId,
-      status: mockStatus.status
+      status: mockStatus.status,
+      errorMessage: mockStatus.errorMessage
     }
+  }
+
+  static getMockStepDelayMillis(taskId: string): number {
+    return MockContractService.getDemoStepDelayMillis(taskId)
+  }
+
+  static getMockTotalSteps(taskId: string): number {
+    return MockContractService.getDemoTotalSteps(taskId)
   }
 
   static getMockAnalysisResult(taskId: string): AnalysisResultDTO {
@@ -132,6 +146,10 @@ export class ContractApi {
   }
 
   async uploadContract(request: UploadContractRequest): Promise<UploadContractResponse> {
+    if (request.debugMode !== undefined && request.debugMode !== DemoFaultMode.NONE) {
+      return this.createMockResponse(request)
+    }
+
     const response = await this.httpClient.post(
       ContractApi.ANALYZE_PATH,
       JSON.stringify({
@@ -139,7 +157,8 @@ export class ContractApi {
         fileType: request.fileType,
         fileUri: request.fileUri,
         businessTag: request.businessTag,
-        apiKey: request.apiKey
+        apiKey: request.apiKey,
+        debugMode: request.debugMode
       })
     )
 
@@ -180,6 +199,32 @@ export class ContractApi {
         `${jsonText} | ${this.readErrorMessage(error)}`
       )
     }
+  }
+
+  private createMockResponse(request: UploadContractRequest): UploadContractResponse {
+    const debugMode: DemoFaultMode = request.debugMode ?? DemoFaultMode.NONE
+    if (debugMode === DemoFaultMode.SERVICE_ERROR) {
+      throw new AppError(
+        ErrorCode.SYS_500,
+        '已命中演示配置：服务端暂时不可用',
+        `${request.fileName} | ${debugMode}`
+      )
+    }
+
+    const preset = this.resolveDemoSamplePreset(request.businessTag)
+    return {
+      taskId: ContractApi.buildMockTaskId(preset, debugMode)
+    }
+  }
+
+  private resolveDemoSamplePreset(rawTag?: string): DemoSamplePreset {
+    if (rawTag === DemoSamplePreset.LOW_RISK) {
+      return DemoSamplePreset.LOW_RISK
+    }
+    if (rawTag === DemoSamplePreset.HIGH_RISK) {
+      return DemoSamplePreset.HIGH_RISK
+    }
+    return DemoSamplePreset.HIGH_RISK
   }
 
   private isAnalyzeStatus(status: string): boolean {

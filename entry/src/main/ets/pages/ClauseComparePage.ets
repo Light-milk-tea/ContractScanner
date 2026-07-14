@@ -2,7 +2,7 @@ import { common } from '@kit.AbilityKit'
 import { back, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
-import { logError } from '../common/logger'
+import { logError, logInfo } from '../common/logger'
 import { ClauseBlock } from '../components/ClauseBlock'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
 import { AnalysisResult } from '../model/domain/AnalysisResult'
@@ -119,6 +119,7 @@ struct ClauseComparePage {
     const baseUrl: string = params.baseUrl ?? API_BASE_URL
     const clauseId: string = params.clauseId ?? ''
     const mapper = new DTOMapper()
+    logInfo(`Load clause detail: taskId=${taskId}, clauseId=${clauseId}, baseUrl=${baseUrl}`, 'ClauseComparePage')
     this.resultVM.setRouteContext(taskId, baseUrl)
     this.resultVM.setSelectedClauseId(clauseId)
     this.isLoading = true
@@ -148,6 +149,8 @@ struct ClauseComparePage {
 
       if (this.currentClause === undefined) {
         this.errorText = '未找到对应条款，已停留在对照页。'
+      } else {
+        logInfo(`Clause detail ready: clauseId=${this.currentClause.clauseId}, title=${this.currentClause.title}`, 'ClauseComparePage')
       }
     } catch (error) {
       this.currentResult = undefined
@@ -218,6 +221,7 @@ struct ClauseComparePage {
       this.currentClause = demoResult.clauses[0]
     }
     this.errorText = '当前展示的是临时演示条款，真实结果仍可稍后重试拉取。'
+    logInfo(`Fallback to demo clause: taskId=${demoResult.taskId}`, 'ClauseComparePage')
   }
 
   async applySensitiveProtection(): Promise<void> {

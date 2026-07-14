@@ -9,6 +9,10 @@
   },
   "buildOptionSet": [
     {
+      "name": "debug",
+      "debuggable": true
+    },
+    {
       "name": "release",
       "arkOptions": {
         "obfuscation": {
@@ -20,14 +24,32 @@
           }
         }
       }
+    }
+  ],
+  "buildModeBinder": [
+    {
+      "buildModeName": "debug",
+      "mappings": [
+        {
+          "buildOptionName": "debug",
+          "targetName": "default"
+        }
+      ]
     },
+    {
+      "buildModeName": "release",
+      "mappings": [
+        {
+          "buildOptionName": "release",
+          "targetName": "default"
+        }
+      ]
+    }
   ],
   "targets": [
     {
-      "name": "default"
-    },
-    {
-      "name": "ohosTest",
+      "name": "default",
+      "runtimeOS": "HarmonyOS"
     }
   ]
 }

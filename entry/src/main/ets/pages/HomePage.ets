@@ -1,7 +1,9 @@
 import { common } from '@kit.AbilityKit'
 import { goImport, goResultOverview, goSettings, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
+import { logError } from '../common/logger'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
+import { LoadingState } from '../components/LoadingState'
 import { Contract } from '../model/domain/Contract'
 import { AnalyzeStatus } from '../model/enums/AnalyzeStatus'
 import { HomeVM } from '../model/viewmodel/HomeVM'
@@ -12,6 +14,7 @@ import { CacheService } from '../services/storage/CacheService'
 struct HomePage {
   @State recentContracts: Contract[] = []
   @State recentErrorText: string = ''
+  @State isLoadingRecentContracts: boolean = false
 
   homeVM: HomeVM = new HomeVM()
   cacheService: CacheService = new CacheService()
@@ -59,7 +62,13 @@ struct HomePage {
             .fontSize(13)
             .fontColor('#666666')
 
-          if (this.recentErrorText.length > 0) {
+          if (this.isLoadingRecentContracts) {
+            LoadingState({
+              title: '正在加载最近记录',
+              description: '我们正在读取本地缓存中的历史分析结果。',
+              detail: '若刚从结果页返回，列表会自动刷新。'
+            })
+          } else if (this.recentErrorText.length > 0) {
             Column({ space: 12 }) {
               EmptyState({
                 title: '最近记录读取失败',
@@ -157,18 +166,29 @@ struct HomePage {
 
   async loadRecentContracts(): Promise<void> {
     this.recentErrorText = ''
+    this.isLoadingRecentContracts = true
 
     const hostContext = this.getHostContext()
     if (hostContext === undefined) {
       this.homeVM.clearRecentContracts()
       this.recentContracts = []
       this.recentErrorText = '当前页面上下文不可用，暂时无法读取最近记录'
+      this.isLoadingRecentContracts = false
       return
     }
 
-    const recentContracts = await this.cacheService.loadRecentContracts(hostContext)
-    this.homeVM.setRecentContracts(recentContracts)
-    this.recentContracts = this.homeVM.recentContracts
+    try {
+      const recentContracts = await this.cacheService.loadRecentContracts(hostContext)
+      this.homeVM.setRecentContracts(recentContracts)
+      this.recentContracts = this.homeVM.recentContracts
+    } catch (error) {
+      this.homeVM.clearRecentContracts()
+      this.recentContracts = []
+      this.recentErrorText = '读取最近记录失败，请稍后重试。'
+      logError('Load recent contracts failed', JSON.stringify(error), 'HomePage')
+    } finally {
+      this.isLoadingRecentContracts = false
+    }
   }
 
   getHostContext(): common.UIAbilityContext | undefined {

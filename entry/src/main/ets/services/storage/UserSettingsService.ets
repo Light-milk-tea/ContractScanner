@@ -1,5 +1,6 @@
 import { common } from '@kit.AbilityKit'
 import { StorageKey } from '../../common/constants'
+import { DemoFaultMode } from '../../model/enums/DemoMode'
 import { SessionStore } from './SessionStore'
 
 export class UserSettingsService {
@@ -29,5 +30,26 @@ export class UserSettingsService {
 
   async clearServiceBaseUrl(context: common.UIAbilityContext): Promise<void> {
     await this.sessionStore.delete(context, StorageKey.SERVICE_BASE_URL)
+  }
+
+  async loadDemoFaultMode(context: common.UIAbilityContext): Promise<DemoFaultMode> {
+    const rawValue = await this.sessionStore.getString(context, StorageKey.DEMO_FAULT_MODE, DemoFaultMode.NONE)
+    return this.isDemoFaultMode(rawValue) ? rawValue as DemoFaultMode : DemoFaultMode.NONE
+  }
+
+  async saveDemoFaultMode(context: common.UIAbilityContext, demoFaultMode: DemoFaultMode): Promise<void> {
+    await this.sessionStore.putString(context, StorageKey.DEMO_FAULT_MODE, demoFaultMode)
+  }
+
+  async clearDemoFaultMode(context: common.UIAbilityContext): Promise<void> {
+    await this.sessionStore.delete(context, StorageKey.DEMO_FAULT_MODE)
+  }
+
+  private isDemoFaultMode(rawValue: string): boolean {
+    return rawValue === DemoFaultMode.NONE
+      || rawValue === DemoFaultMode.WEAK_NETWORK
+      || rawValue === DemoFaultMode.TIMEOUT
+      || rawValue === DemoFaultMode.SERVICE_ERROR
+      || rawValue === DemoFaultMode.DEGRADE_TO_DEMO
   }
 }

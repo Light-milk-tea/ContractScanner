@@ -15,6 +15,7 @@ export enum StorageKey {
   LOG_ENABLED = 'log_enabled',
   MODEL_API_KEY = 'model_api_key',
   SERVICE_BASE_URL = 'service_base_url',
+  DEMO_FAULT_MODE = 'demo_fault_mode',
   LAST_VIEWED_RESULT = 'last_viewed_result',
   PENDING_ROUTE_PARAMS = 'pending_route_params'
 }

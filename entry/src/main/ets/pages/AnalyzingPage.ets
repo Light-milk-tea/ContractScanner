@@ -2,9 +2,10 @@ import { goBackToHome, replace } from '../app/AppRouter'
 import { RouteParams } from '../app/AppRouter'
 import { API_BASE_URL, RoutePath } from '../common/constants'
 import { AppError, ErrorCode } from '../common/errors'
-import { logError } from '../common/logger'
+import { logError, logInfo } from '../common/logger'
 import { AnalyzeProgress } from '../components/AnalyzeProgress'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
+import { LoadingState } from '../components/LoadingState'
 import { AnalyzeStatus } from '../model/enums/AnalyzeStatus'
 import { AnalyzeVM } from '../model/viewmodel/AnalyzeVM'
 import { ContractApi } from '../services/api/ContractApi'
@@ -41,6 +42,7 @@ struct AnalyzingPage {
       this.taskId = taskId
     }
 
+    logInfo(`Open analyzing page: taskId=${taskId}, baseUrl=${this.apiBaseUrl()}`, 'AnalyzingPage')
     this.syncFromViewModel()
     this.startPolling()
   }
@@ -61,6 +63,14 @@ struct AnalyzingPage {
         progressText: this.progressText,
         progressValue: this.progressValue
       })
+
+      if (this.shouldShowPollingState()) {
+        LoadingState({
+          title: this.pollingTitle(),
+          description: this.pollingDescription(),
+          detail: this.pollingDetail()
+        })
+      }
 
       if (this.taskId.length > 0) {
         Text(`任务：${this.taskId}`)
@@ -93,6 +103,7 @@ struct AnalyzingPage {
         if (this.status === AnalyzeStatus.FAILED || this.errorText.length > 0) {
           Button('重试')
             .type(ButtonType.Capsule)
+            .enabled(!this.isPolling)
             .onClick(() => {
               this.retry()
             })
@@ -101,12 +112,13 @@ struct AnalyzingPage {
         if (this.canGoResult && !this.isNavigatingToResult) {
           Button('查看结果')
             .type(ButtonType.Capsule)
+            .enabled(!this.isNavigatingToResult)
             .onClick(() => {
               this.goResult()
             })
         }
 
-        Button(this.isPolling ? '轮询中...' : '开始轮询')
+        Button(this.isPolling ? '自动刷新中...' : '开始轮询')
           .type(ButtonType.Capsule)
           .enabled(!this.isPolling)
           .onClick(() => {
@@ -135,6 +147,7 @@ struct AnalyzingPage {
     this.noticeText = ''
     this.canGoResult = false
     this.isPolling = true
+    logInfo(`Start polling: taskId=${this.taskId}, isDemo=${this.analyzeVM.isDemoTask()}`, 'AnalyzingPage')
 
     if (this.analyzeVM.isDemoTask()) {
       this.demoStep = 0
@@ -184,6 +197,7 @@ struct AnalyzingPage {
       return
     }
 
+    logInfo(`Task status changed: taskId=${this.taskId}, from=${this.status}, to=${status}`, 'AnalyzingPage')
     this.analyzeVM.updateStatus(status)
     this.syncFromViewModel()
     if (this.analyzeVM.shouldStopPolling()) {
@@ -198,6 +212,7 @@ struct AnalyzingPage {
   }
 
   retry(): void {
+    logInfo(`Retry polling: taskId=${this.taskId}`, 'AnalyzingPage')
     this.errorText = ''
     this.noticeText = ''
     this.canGoResult = false
@@ -220,32 +235,27 @@ struct AnalyzingPage {
     this.isPolling = true
     this.timerId = setTimeout(() => {
       this.advanceDemoStatus()
-    }, 1000)
+    }, ContractApi.getMockStepDelayMillis(this.taskId))
   }
 
   advanceDemoStatus(): void {
     const mockResponse = ContractApi.getMockTaskStatus(this.demoStep, this.taskId)
+    if (mockResponse.errorMessage !== undefined && mockResponse.errorMessage.length > 0) {
+      this.errorText = mockResponse.errorMessage
+    }
     this.updateStatus(mockResponse.status)
     if (this.demoStep === 0) {
-      this.noticeText = ContractApi.mockNoticeText()
-      this.demoStep = 1
-      this.scheduleNextDemoStep()
-      return
+      this.noticeText = ContractApi.mockNoticeText(this.taskId)
     }
-    if (this.demoStep === 1) {
-      this.demoStep = 2
+    if (this.demoStep < ContractApi.getMockTotalSteps(this.taskId)) {
+      this.demoStep = this.demoStep + 1
       this.scheduleNextDemoStep()
-      return
-    }
-    if (this.demoStep === 2) {
-      this.demoStep = 3
-      this.scheduleNextDemoStep()
-      return
     }
   }
 
   async goResult(): Promise<void> {
     this.isNavigatingToResult = true
+    logInfo(`Go result overview: taskId=${this.taskId}`, 'AnalyzingPage')
     const params: RouteParams = new RouteParams()
     params.taskId = this.taskId
     params.baseUrl = this.apiBaseUrl()
@@ -263,6 +273,37 @@ struct AnalyzingPage {
     setTimeout(() => {
       this.goResult()
     }, 400)
+  }
+
+  shouldShowPollingState(): boolean {
+    return this.isPolling && this.errorText.length === 0 && this.status !== AnalyzeStatus.SUCCESS
+  }
+
+  pollingTitle(): string {
+    if (this.status === AnalyzeStatus.OCR_RUNNING) {
+      return '正在识别合同文字'
+    }
+    if (this.status === AnalyzeStatus.LLM_RUNNING) {
+      return '正在分析风险条款'
+    }
+    return '正在等待任务推进'
+  }
+
+  pollingDescription(): string {
+    if (this.analyzeVM.isDemoTask()) {
+      return '当前为演示任务，页面会按预设节奏自动推进状态。'
+    }
+    if (this.status === AnalyzeStatus.OCR_RUNNING) {
+      return '系统正在提取正文内容，完成后会自动进入条款分析阶段。'
+    }
+    if (this.status === AnalyzeStatus.LLM_RUNNING) {
+      return '系统正在生成白话解释、风险原因与修改建议。'
+    }
+    return '任务已创建成功，系统会持续轮询服务端并自动刷新状态。'
+  }
+
+  pollingDetail(): string {
+    return this.noticeText.length > 0 ? this.noticeText : '无需手动刷新，完成后会自动跳转到结果页。'
   }
 
   apiBaseUrl(): string {

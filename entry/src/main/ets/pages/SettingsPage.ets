@@ -1,5 +1,6 @@
 import { common } from '@kit.AbilityKit'
 import { back } from '../app/AppRouter'
+import { DemoFaultMode } from '../model/enums/DemoMode'
 import { PrivacyGuardService } from '../services/ability/PrivacyGuardService'
 import { UserSettingsService } from '../services/storage/UserSettingsService'
 
@@ -17,6 +18,8 @@ struct SettingsPage {
   @State hasStoredApiKey: boolean = false
   @State privacyGuardEnabled: boolean = false
   @State privacyGuardHint: string = ''
+  @State demoFaultMode: DemoFaultMode = DemoFaultMode.NONE
+  @State demoFaultHint: string = ''
 
   userSettingsService: UserSettingsService = new UserSettingsService()
   privacyGuardService: PrivacyGuardService = new PrivacyGuardService()
@@ -24,6 +27,7 @@ struct SettingsPage {
   aboutToAppear(): void {
     this.loadApiKey()
     this.loadPrivacyGuardSetting()
+    this.loadDemoFaultMode()
   }
 
   build() {
@@ -149,6 +153,39 @@ struct SettingsPage {
           .padding({ top: 8, bottom: 8 })
 
           this.buildSettingHint('日志调试', '后续将在此补齐日志开关与调试信息展示能力。')
+
+          Column({ space: 8 }) {
+            Text('答辩演示模式')
+              .fontSize(16)
+              .fontWeight(FontWeight.Medium)
+            Text('用于主动触发弱网、超时、服务失败或降级展示，不依赖现场网络偶发问题。')
+              .fontSize(13)
+              .fontColor('#666666')
+
+            Row({ space: 8 }) {
+              this.buildDemoModeButton(DemoFaultMode.NONE, '正常')
+              this.buildDemoModeButton(DemoFaultMode.WEAK_NETWORK, '弱网')
+              this.buildDemoModeButton(DemoFaultMode.TIMEOUT, '超时')
+            }
+
+            Row({ space: 8 }) {
+              this.buildDemoModeButton(DemoFaultMode.SERVICE_ERROR, '服务失败')
+              this.buildDemoModeButton(DemoFaultMode.DEGRADE_TO_DEMO, '降级展示')
+            }
+
+            Text(`当前模式：${this.demoFaultModeLabel(this.demoFaultMode)}`)
+              .fontSize(12)
+              .fontColor(this.demoFaultMode === DemoFaultMode.NONE ? '#999999' : '#2A8F5B')
+
+            if (this.demoFaultHint.length > 0) {
+              Text(this.demoFaultHint)
+                .fontSize(12)
+                .fontColor('#2E6BE6')
+            }
+          }
+          .alignItems(HorizontalAlign.Start)
+          .width('100%')
+          .padding({ top: 8, bottom: 8 })
         }
         .alignItems(HorizontalAlign.Start)
         .width('100%')
@@ -190,6 +227,17 @@ struct SettingsPage {
     .padding({ top: 8, bottom: 8 })
   }
 
+  @Builder
+  buildDemoModeButton(mode: DemoFaultMode, label: string) {
+    Button(label)
+      .type(ButtonType.Capsule)
+      .backgroundColor(this.demoFaultMode === mode ? '#2E6BE6' : '#DDE3EE')
+      .fontColor(this.demoFaultMode === mode ? '#FFFFFF' : '#333333')
+      .onClick(() => {
+        this.saveDemoFaultMode(mode)
+      })
+  }
+
   getHostContext(): common.UIAbilityContext | undefined {
     const hostContext = this.getUIContext().getHostContext()
     if (hostContext === undefined) {
@@ -222,6 +270,17 @@ struct SettingsPage {
 
     this.privacyGuardEnabled = await this.privacyGuardService.loadEnabled(hostContext)
     this.privacyGuardHint = this.privacyGuardEnabled ? '结果页和条款对照页会在进入时自动启用系统隐私窗口。' : ''
+  }
+
+  async loadDemoFaultMode(): Promise<void> {
+    const hostContext = this.getHostContext()
+    if (hostContext === undefined) {
+      this.demoFaultHint = '当前页面上下文不可用，暂时无法读取演示模式配置'
+      return
+    }
+
+    this.demoFaultMode = await this.userSettingsService.loadDemoFaultMode(hostContext)
+    this.demoFaultHint = this.demoFaultModeHint(this.demoFaultMode)
   }
 
   validationMessage(): string {
@@ -313,5 +372,49 @@ struct SettingsPage {
     this.privacyGuardHint = nextValue
       ? '隐私防窥已开启，进入敏感页面时系统将阻止截屏和录屏。'
       : '隐私防窥已关闭，后续进入敏感页面时将恢复普通窗口。'
+  }
+
+  async saveDemoFaultMode(mode: DemoFaultMode): Promise<void> {
+    const hostContext = this.getHostContext()
+    if (hostContext === undefined) {
+      this.demoFaultHint = '当前页面上下文不可用，暂时无法切换演示模式'
+      return
+    }
+
+    await this.userSettingsService.saveDemoFaultMode(hostContext, mode)
+    this.demoFaultMode = mode
+    this.demoFaultHint = this.demoFaultModeHint(mode)
+  }
+
+  demoFaultModeLabel(mode: DemoFaultMode): string {
+    if (mode === DemoFaultMode.WEAK_NETWORK) {
+      return '弱网演示'
+    }
+    if (mode === DemoFaultMode.TIMEOUT) {
+      return '超时演示'
+    }
+    if (mode === DemoFaultMode.SERVICE_ERROR) {
+      return '服务失败演示'
+    }
+    if (mode === DemoFaultMode.DEGRADE_TO_DEMO) {
+      return '降级展示'
+    }
+    return '正常'
+  }
+
+  demoFaultModeHint(mode: DemoFaultMode): string {
+    if (mode === DemoFaultMode.WEAK_NETWORK) {
+      return '导入后会走本地慢速演示链路，分析页状态推进会刻意放慢。'
+    }
+    if (mode === DemoFaultMode.TIMEOUT) {
+      return '导入后会在模型分析阶段模拟超时失败，可直接演示重试与异常反馈。'
+    }
+    if (mode === DemoFaultMode.SERVICE_ERROR) {
+      return '点击“开始分析”会直接触发服务失败提示，用于演示导入失败和继续演示入口。'
+    }
+    if (mode === DemoFaultMode.DEGRADE_TO_DEMO) {
+      return '导入后会直接进入本地降级展示结果，用于演示服务不可用时的兜底讲解。'
+    }
+    return '关闭后将优先走真实服务分析链路。'
   }
 }
