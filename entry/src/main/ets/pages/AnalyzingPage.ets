@@ -3,9 +3,12 @@ import { RouteParams } from '../app/AppRouter'
 import { API_BASE_URL, RoutePath } from '../common/constants'
 import { AppError, ErrorCode } from '../common/errors'
 import { logError, logInfo } from '../common/logger'
+import { UiColors, UiSpace } from '../common/ui/DesignTokens'
 import { AnalyzeProgress } from '../components/AnalyzeProgress'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
+import { PageScaffold } from '../components/PageScaffold'
+import { SurfaceCard } from '../components/SurfaceCard'
 import { AnalyzeStatus } from '../model/enums/AnalyzeStatus'
 import { AnalyzeVM } from '../model/viewmodel/AnalyzeVM'
 import { ContractApi } from '../services/api/ContractApi'
@@ -53,84 +56,112 @@ struct AnalyzingPage {
   }
 
   build() {
-    Column({ space: 16 }) {
-      Text('分析中')
-        .fontSize(28)
-        .fontWeight(FontWeight.Bold)
-
-      AnalyzeProgress({
-        status: this.status,
-        progressText: this.progressText,
-        progressValue: this.progressValue
-      })
-
-      if (this.shouldShowPollingState()) {
-        LoadingState({
-          title: this.pollingTitle(),
-          description: this.pollingDescription(),
-          detail: this.pollingDetail()
+    Column() {
+      PageScaffold({
+        title: '分析中',
+        description: '系统正在持续推进 OCR 与模型分析流程，完成后会自动为你打开结果页。',
+        backText: '返回首页',
+        onBack: () => {
+          this.leaveToHome()
+        }
+      }) {
+        Column({ space: UiSpace.LG }) {
+        AnalyzeProgress({
+          status: this.status,
+          progressText: this.progressText,
+          progressValue: this.progressValue
         })
-      }
 
-      if (this.taskId.length > 0) {
-        Text(`任务：${this.taskId}`)
-          .fontSize(12)
-          .fontColor('#999999')
-      }
-
-      if (this.noticeText.length > 0) {
-        Text(this.noticeText)
-          .fontSize(13)
-          .fontColor('#A36B00')
-      }
-
-      if (this.errorText.length > 0 || this.status === AnalyzeStatus.FAILED) {
-        EmptyState({
-          title: '分析未完成',
-          description: this.errorText.length > 0 ? this.errorText : '分析任务执行失败，请重试或返回重新发起分析。',
-          hint: '修正服务地址或服务状态后，可点击“重试”重新发起轮询。',
-          stateType: EmptyStateType.ERROR
-        })
-      }
-
-      Row({ space: 12 }) {
-        Button('返回首页')
-          .type(ButtonType.Capsule)
-          .onClick(() => {
-            this.leaveToHome()
+        if (this.shouldShowPollingState()) {
+          LoadingState({
+            title: this.pollingTitle(),
+            description: this.pollingDescription(),
+            detail: this.pollingDetail()
           })
-
-        if (this.status === AnalyzeStatus.FAILED || this.errorText.length > 0) {
-          Button('重试')
-            .type(ButtonType.Capsule)
-            .enabled(!this.isPolling)
-            .onClick(() => {
-              this.retry()
-            })
         }
 
-        if (this.canGoResult && !this.isNavigatingToResult) {
-          Button('查看结果')
-            .type(ButtonType.Capsule)
-            .enabled(!this.isNavigatingToResult)
-            .onClick(() => {
-              this.goResult()
-            })
+        if (this.taskId.length > 0 || this.noticeText.length > 0) {
+          SurfaceCard() {
+            Column({ space: UiSpace.SM }) {
+              if (this.taskId.length > 0) {
+                Text(`任务编号：${this.taskId}`)
+                  .fontSize(12)
+                  .fontColor(UiColors.TEXT_SECONDARY)
+              }
+
+              if (this.noticeText.length > 0) {
+                Text(this.noticeText)
+                  .fontSize(13)
+                  .fontColor(UiColors.WARNING)
+                  .lineHeight(20)
+              }
+            }
+            .alignItems(HorizontalAlign.Start)
+            .width('100%')
+          }
         }
 
-        Button(this.isPolling ? '自动刷新中...' : '开始轮询')
-          .type(ButtonType.Capsule)
-          .enabled(!this.isPolling)
-          .onClick(() => {
-            this.startPolling()
+        if (this.errorText.length > 0 || this.status === AnalyzeStatus.FAILED) {
+          EmptyState({
+            title: '分析未完成',
+            description: this.errorText.length > 0 ? this.errorText : '分析任务执行失败，请重试或返回重新发起分析。',
+            hint: '修正服务地址或服务状态后，可点击“重试”重新发起轮询。',
+            stateType: EmptyStateType.ERROR
           })
+        }
+
+        SurfaceCard({
+          surfaceColor: UiColors.SURFACE_ACCENT,
+          strokeColor: UiColors.BRAND_SOFT
+        }) {
+          Row({ space: UiSpace.SM }) {
+            Button('返回首页')
+              .type(ButtonType.Capsule)
+              .backgroundColor(UiColors.SURFACE_SECONDARY)
+              .fontColor(UiColors.TEXT_PRIMARY)
+              .onClick(() => {
+                this.leaveToHome()
+              })
+
+            if (this.status === AnalyzeStatus.FAILED || this.errorText.length > 0) {
+              Button('重试')
+                .type(ButtonType.Capsule)
+                .enabled(!this.isPolling)
+                .backgroundColor(UiColors.BRAND)
+                .fontColor('#FFFFFF')
+                .onClick(() => {
+                  this.retry()
+                })
+            }
+
+            if (this.canGoResult && !this.isNavigatingToResult) {
+              Button('查看结果')
+                .type(ButtonType.Capsule)
+                .enabled(!this.isNavigatingToResult)
+                .backgroundColor(UiColors.BRAND)
+                .fontColor('#FFFFFF')
+                .onClick(() => {
+                  this.goResult()
+                })
+            }
+
+            Button(this.isPolling ? '自动刷新中...' : '开始轮询')
+              .type(ButtonType.Capsule)
+              .enabled(!this.isPolling)
+              .backgroundColor(this.isPolling ? UiColors.SURFACE_SECONDARY : UiColors.SURFACE_MUTED)
+              .fontColor(UiColors.TEXT_PRIMARY)
+              .onClick(() => {
+                this.startPolling()
+              })
+          }
+        }
+        }
+        .alignItems(HorizontalAlign.Start)
+        .width('100%')
       }
     }
-    .justifyContent(FlexAlign.Start)
-    .alignItems(HorizontalAlign.Start)
     .width('100%')
     .height('100%')
-    .padding(24)
   }
 
   startPolling(): void {

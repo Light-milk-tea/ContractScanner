@@ -3,8 +3,12 @@ import { back, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
 import { logError, logInfo } from '../common/logger'
+import { readingMaxWidth } from '../common/ui/LayoutHelpers'
+import { UiColors, UiSpace } from '../common/ui/DesignTokens'
 import { ClauseBlock } from '../components/ClauseBlock'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
+import { PageScaffold } from '../components/PageScaffold'
+import { SurfaceCard } from '../components/SurfaceCard'
 import { AnalysisResult } from '../model/domain/AnalysisResult'
 import { ClauseRisk } from '../model/domain/ClauseRisk'
 import { ResultVM } from '../model/viewmodel/ResultVM'
@@ -39,44 +43,48 @@ struct ClauseComparePage {
   }
 
   build() {
-    Scroll() {
-      Column({ space: 16 }) {
-        Row({ space: 12 }) {
-          Button('返回结果页')
-            .type(ButtonType.Capsule)
-            .onClick(() => {
-              back(this.getUIContext())
-            })
-          Text('条款对照阅读')
-            .fontSize(28)
-            .fontWeight(FontWeight.Bold)
+    Column() {
+      PageScaffold({
+        title: '条款对照阅读',
+        description: '这里会按阅读顺序展示原文、白话解释、风险原因和修改建议，适合逐条精读。',
+        backText: '返回结果页',
+        onBack: () => {
+          back(this.getUIContext())
         }
-
+      }) {
+        Column({ space: UiSpace.LG }) {
         if (this.isLoading) {
-          Text('正在加载条款详情...')
-            .fontSize(14)
-            .fontColor('#666666')
+          SurfaceCard({
+            surfaceColor: UiColors.SURFACE_ACCENT,
+            strokeColor: UiColors.BRAND_SOFT
+          }) {
+            Text('正在加载条款详情...')
+              .fontSize(14)
+              .fontColor(UiColors.TEXT_SECONDARY)
+          }
         }
 
         if (this.errorText.length > 0) {
-          Column({ space: 12 }) {
+          Column({ space: UiSpace.MD }) {
             EmptyState({
               title: '条款详情加载异常',
               description: this.errorText,
               hint: this.isUsingDemoResult ? '当前页面已回退到演示条款，可继续查看内容，或返回结果页重新进入。' : '可重试加载真实条款，或先切换到演示条款继续讲解。',
               stateType: EmptyStateType.ERROR
             })
-            Row({ space: 8 }) {
+            Row({ space: UiSpace.SM }) {
               Button('重试加载')
                 .type(ButtonType.Capsule)
+                .backgroundColor(UiColors.BRAND)
+                .fontColor('#FFFFFF')
                 .onClick(() => {
                   this.loadClauseDetail()
                 })
               if (!this.isUsingDemoResult) {
                 Button('查看演示条款')
                   .type(ButtonType.Capsule)
-                  .backgroundColor('#DDE3EE')
-                  .fontColor('#333333')
+                  .backgroundColor(UiColors.SURFACE_SECONDARY)
+                  .fontColor(UiColors.TEXT_PRIMARY)
                   .onClick(() => {
                     this.openDemoClause()
                   })
@@ -89,25 +97,35 @@ struct ClauseComparePage {
 
         if (this.currentClause !== undefined) {
           if (this.privacyGuardEnabled) {
-            Text('已开启隐私防窥，当前条款详情页会限制截屏和录屏。')
-              .fontSize(12)
-              .fontColor('#2E6BE6')
+            SurfaceCard({
+              surfaceColor: UiColors.SURFACE_ACCENT,
+              strokeColor: UiColors.BRAND_SOFT,
+              paddingValue: UiSpace.LG
+            }) {
+              Text('已开启隐私防窥，当前条款详情页会限制截屏和录屏。')
+                .fontSize(12)
+                .fontColor(UiColors.BRAND)
+            }
           }
 
-          ClauseBlock({
-            title: this.currentClause.title,
-            originalText: this.currentClause.originalText,
-            plainText: this.currentClause.plainText,
-            riskReason: this.currentClause.riskReason,
-            suggestion: this.currentClause.suggestion ?? '',
-            anchorText: this.buildAnchorText(this.currentClause),
-            riskLevel: this.currentClause.riskLevel
-          })
+          Column() {
+            ClauseBlock({
+              title: this.currentClause.title,
+              originalText: this.currentClause.originalText,
+              plainText: this.currentClause.plainText,
+              riskReason: this.currentClause.riskReason,
+              suggestion: this.currentClause.suggestion ?? '',
+              anchorText: this.buildAnchorText(this.currentClause),
+              riskLevel: this.currentClause.riskLevel
+            })
+          }
+          .width('100%')
+          .constraintSize({ maxWidth: readingMaxWidth() })
         }
+        }
+        .alignItems(HorizontalAlign.Start)
+        .width('100%')
       }
-      .alignItems(HorizontalAlign.Start)
-      .width('100%')
-      .padding(24)
     }
     .width('100%')
     .height('100%')

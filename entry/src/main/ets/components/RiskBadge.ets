@@ -1,4 +1,5 @@
 import { RiskLevel } from '../model/enums/RiskLevel'
+import { UiRadius } from '../common/ui/DesignTokens'
 
 @Component
 export struct RiskBadge {
@@ -8,12 +9,12 @@ export struct RiskBadge {
   build() {
     Row() {
       Text(this.buildLabel())
-        .fontSize(14)
+        .fontSize(13)
         .fontWeight(FontWeight.Medium)
         .fontColor(this.badgeTextColor())
     }
-    .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-    .borderRadius(999)
+    .padding({ left: 12, right: 12, top: 7, bottom: 7 })
+    .borderRadius(UiRadius.PILL)
     .backgroundColor(this.badgeBackgroundColor())
   }
 
@@ -37,21 +38,21 @@ export struct RiskBadge {
 
   badgeBackgroundColor(): string {
     if (this.riskLevel === RiskLevel.RED) {
-      return '#FDECEC'
+      return '#FCE7E5'
     }
     if (this.riskLevel === RiskLevel.YELLOW) {
-      return '#FFF7E6'
+      return '#FFF1D8'
     }
-    return '#EAF7EF'
+    return '#E8F6EE'
   }
 
   badgeTextColor(): string {
     if (this.riskLevel === RiskLevel.RED) {
-      return '#C23B3B'
+      return '#B9352F'
     }
     if (this.riskLevel === RiskLevel.YELLOW) {
-      return '#B7791F'
+      return '#9A6711'
     }
-    return '#2F855A'
+    return '#247249'
   }
 }

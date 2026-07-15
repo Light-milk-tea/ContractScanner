@@ -6,8 +6,12 @@ import { back, goAnalyzing, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
 import { logError, logInfo } from '../common/logger'
+import { UiColors, UiRadius, UiSpace } from '../common/ui/DesignTokens'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
+import { PageScaffold } from '../components/PageScaffold'
+import { SectionHeader } from '../components/SectionHeader'
+import { SurfaceCard } from '../components/SurfaceCard'
 import { Contract } from '../model/domain/Contract'
 import { DemoFaultMode, DemoSamplePreset } from '../model/enums/DemoMode'
 import { ImportVM } from '../model/viewmodel/ImportVM'
@@ -45,225 +49,225 @@ struct ImportPage {
   }
 
   build() {
-    Column({ space: 16 }) {
-      Row({ space: 12 }) {
-        Button('返回首页')
-          .type(ButtonType.Capsule)
-          .enabled(!this.isSubmitting)
-          .onClick(() => {
-            back(this.getUIContext())
-          })
-        Text('导入合同')
-          .fontSize(28)
-          .fontWeight(FontWeight.Bold)
-      }
-      Text('当前已接入本地文件选择，拍照和相册导入将在后续继续补齐。')
-        .fontSize(14)
-        .fontColor('#666666')
-
-      Column({ space: 8 }) {
-        Text('导入方式')
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-        Row({ space: 8 }) {
-          Button('拍照')
-            .type(ButtonType.Capsule)
-            .enabled(!this.isSubmitting)
-            .backgroundColor(this.importVM.selectedSource === 'CAMERA' ? '#2E6BE6' : '#DDE3EE')
-            .fontColor(this.importVM.selectedSource === 'CAMERA' ? '#FFFFFF' : '#333333')
-            .onClick(() => {
-              this.importVM.setSelectedSource('CAMERA')
-            })
-          Button('相册')
-            .type(ButtonType.Capsule)
-            .enabled(!this.isSubmitting)
-            .backgroundColor(this.importVM.selectedSource === 'GALLERY' ? '#2E6BE6' : '#DDE3EE')
-            .fontColor(this.importVM.selectedSource === 'GALLERY' ? '#FFFFFF' : '#333333')
-            .onClick(() => {
-              this.importVM.setSelectedSource('GALLERY')
-            })
-          Button('本地文件')
-            .type(ButtonType.Capsule)
-            .enabled(!this.isSubmitting)
-            .backgroundColor(this.importVM.selectedSource === 'LOCAL_FILE' ? '#2E6BE6' : '#DDE3EE')
-            .fontColor(this.importVM.selectedSource === 'LOCAL_FILE' ? '#FFFFFF' : '#333333')
-            .onClick(() => {
-              this.importVM.setSelectedSource('LOCAL_FILE')
-            })
+    Column() {
+      PageScaffold({
+        title: '导入合同',
+        description: '支持导入真实合同，也支持在文件区直接选择演示样例。服务地址请前往用户设置维护，当前已接入本地文件选择，拍照和相册导入将在后续补齐。',
+        backText: '返回首页',
+        onBack: () => {
+          back(this.getUIContext())
         }
-      }
-
-      Column({ space: 8 }) {
-        Text('服务地址')
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-        TextInput({ text: this.baseUrl, placeholder: '例如：http://192.168.x.x:3000' })
-          .width('100%')
-          .enabled(!this.isSubmitting)
-          .onChange((value: string) => {
-            this.baseUrl = value
-          })
-        if (this.isLoopbackBaseUrl()) {
-          Text('当前是本机回环地址；在真机或模拟器上请改成电脑局域网 IP，例如 http://192.168.x.x:3000。')
-            .fontSize(12)
-            .fontColor('#C0392B')
-        }
-        Text(this.baseUrlNoticeText)
-          .fontSize(12)
-          .fontColor(this.baseUrlNoticeColor)
-        Text(this.apiKeyNoticeText)
-          .fontSize(12)
-          .fontColor(this.apiKeyNoticeColor)
-      }
-
-      Column({ space: 8 }) {
-        Text('演示样例')
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-        Text('可一键切换高风险 / 低风险样例；用于答辩时快速展示不同分析结果。')
-          .fontSize(12)
-          .fontColor('#666666')
-        Row({ space: 8 }) {
-          Button('高风险样例')
-            .type(ButtonType.Capsule)
-            .enabled(!this.isSubmitting)
-            .backgroundColor(this.selectedDemoPreset === DemoSamplePreset.HIGH_RISK ? '#2E6BE6' : '#DDE3EE')
-            .fontColor(this.selectedDemoPreset === DemoSamplePreset.HIGH_RISK ? '#FFFFFF' : '#333333')
-            .onClick(() => {
-              this.applyDemoSample(DemoSamplePreset.HIGH_RISK)
+      }) {
+        Column({ space: UiSpace.LG }) {
+        SurfaceCard() {
+          Column({ space: UiSpace.MD }) {
+            SectionHeader({
+              title: '导入方式',
+              description: '先选择合同来源，再继续选择文件；服务地址由用户设置统一管理。'
             })
-          Button('低风险样例')
-            .type(ButtonType.Capsule)
-            .enabled(!this.isSubmitting)
-            .backgroundColor(this.selectedDemoPreset === DemoSamplePreset.LOW_RISK ? '#2E6BE6' : '#DDE3EE')
-            .fontColor(this.selectedDemoPreset === DemoSamplePreset.LOW_RISK ? '#FFFFFF' : '#333333')
-            .onClick(() => {
-              this.applyDemoSample(DemoSamplePreset.LOW_RISK)
-            })
-        }
-        Text(this.demoSampleHint())
-          .fontSize(12)
-          .fontColor('#666666')
-      }
-
-      Column({ space: 8 }) {
-        Text('文件信息')
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-        Row({ space: 8 }) {
-          Button('选择文件')
-            .type(ButtonType.Capsule)
-            .enabled(!this.isSubmitting)
-            .onClick(() => {
-              this.selectLocalFile()
-            })
-          Text('支持 pdf、docx、txt、md、jpg、png 等常见合同文件')
-            .fontSize(12)
-            .fontColor('#666666')
-        }
-        TextInput({ text: this.fileUri, placeholder: '文件 URI / 路径（未选择时可手动输入）' })
-          .width('100%')
-          .enabled(!this.isSubmitting)
-          .onChange((value: string) => {
-            this.fileUri = value
-            this.selectedDemoPreset = DemoSamplePreset.NONE
-          })
-        TextInput({ text: this.fileName, placeholder: '文件名（可选）' })
-          .width('100%')
-          .enabled(!this.isSubmitting)
-          .onChange((value: string) => {
-            this.fileName = value
-            this.selectedDemoPreset = DemoSamplePreset.NONE
-          })
-        Row({ space: 8 }) {
-          Button('填充示例')
-            .enabled(!this.isSubmitting)
-            .onClick(() => {
-              this.applyDemoSample(DemoSamplePreset.HIGH_RISK)
-            })
-          Button('清空')
-            .enabled(!this.isSubmitting)
-            .onClick(() => {
-              this.fileUri = ''
-              this.fileName = ''
-              this.selectedDemoPreset = DemoSamplePreset.NONE
-              this.importVM.reset()
-              this.errorText = ''
-            })
-        }
-        if (this.importVM.selectedFileName.length > 0) {
-          Text(`已选择：${this.importVM.selectedFileName} (${this.importVM.selectedFileType})`)
-            .fontSize(13)
-            .fontColor('#666666')
-        }
-        Text(this.demoModeNoticeText)
-          .fontSize(12)
-          .fontColor(this.demoModeNoticeColor)
-      }
-
-      if (this.isSubmitting) {
-        LoadingState({
-          title: '正在提交分析任务',
-          description: '我们正在校验文件信息并向服务端创建分析任务。',
-          detail: '提交成功后会自动进入“分析中”页面。'
-        })
-      }
-
-      if (this.errorText.length > 0) {
-        Column({ space: 12 }) {
-          EmptyState({
-            title: '导入失败',
-            description: this.errorText,
-            hint: this.canContinueDemo ? '可修正服务地址后重试，或继续进入临时 Mock 演示任务。' : '请修正输入信息后重试。',
-            stateType: EmptyStateType.ERROR
-          })
-          Row({ space: 8 }) {
-            Button('重试上传')
-              .type(ButtonType.Capsule)
-              .enabled(!this.isSubmitting)
-              .onClick(() => {
-                this.startAnalyze()
-              })
-            if (this.canContinueDemo) {
-              Button('继续演示')
+            Row({ space: UiSpace.SM }) {
+              Button('拍照')
                 .type(ButtonType.Capsule)
+                .enabled(!this.isSubmitting)
+                .backgroundColor(this.importVM.selectedSource === 'CAMERA' ? UiColors.BRAND : UiColors.SURFACE_SECONDARY)
+                .fontColor(this.importVM.selectedSource === 'CAMERA' ? '#FFFFFF' : UiColors.TEXT_PRIMARY)
                 .onClick(() => {
-                  this.continueDemo()
+                  this.importVM.setSelectedSource('CAMERA')
+                })
+              Button('相册')
+                .type(ButtonType.Capsule)
+                .enabled(!this.isSubmitting)
+                .backgroundColor(this.importVM.selectedSource === 'GALLERY' ? UiColors.BRAND : UiColors.SURFACE_SECONDARY)
+                .fontColor(this.importVM.selectedSource === 'GALLERY' ? '#FFFFFF' : UiColors.TEXT_PRIMARY)
+                .onClick(() => {
+                  this.importVM.setSelectedSource('GALLERY')
+                })
+              Button('本地文件')
+                .type(ButtonType.Capsule)
+                .enabled(!this.isSubmitting)
+                .backgroundColor(this.importVM.selectedSource === 'LOCAL_FILE' ? UiColors.BRAND : UiColors.SURFACE_SECONDARY)
+                .fontColor(this.importVM.selectedSource === 'LOCAL_FILE' ? '#FFFFFF' : UiColors.TEXT_PRIMARY)
+                .onClick(() => {
+                  this.importVM.setSelectedSource('LOCAL_FILE')
                 })
             }
           }
-        }
-        .width('100%')
-      }
-
-      Button(this.isSubmitting ? '提交中...' : '开始分析')
-        .width('100%')
-        .enabled(!this.isSubmitting)
-        .onClick(() => {
-          this.startAnalyze()
-        })
-
-      if (this.selectedDemoPreset !== DemoSamplePreset.NONE) {
-        Button('直接演示当前样例')
+          .alignItems(HorizontalAlign.Start)
           .width('100%')
-          .type(ButtonType.Capsule)
-          .backgroundColor('#DDE3EE')
-          .fontColor('#333333')
-          .enabled(!this.isSubmitting)
-          .onClick(() => {
-            this.startDemoPreview()
-          })
-      }
+        }
 
-      Text('当前页已支持直接选择本地文件；文本文件会自动读取正文并转为可分析内容，也可在文件 URI 中填入 `inline://合同正文` 形式的文本样例。')
-        .fontSize(13)
-        .fontColor('#999999')
+        SurfaceCard() {
+          Column({ space: UiSpace.MD }) {
+            SectionHeader({
+              title: '文件信息',
+              description: '支持 pdf、docx、txt、md、jpg、png 等常见合同文件；也可在这里直接选择高风险或低风险演示样例。'
+            })
+            Text(`当前服务地址：${this.baseUrl}`)
+              .fontSize(12)
+              .fontColor(UiColors.TEXT_SECONDARY)
+            Text(this.baseUrlNoticeText)
+              .fontSize(12)
+              .fontColor(this.baseUrlNoticeColor)
+            Text(this.apiKeyNoticeText)
+              .fontSize(12)
+              .fontColor(this.apiKeyNoticeColor)
+            Row({ space: UiSpace.SM }) {
+              Button('选择文件')
+                .type(ButtonType.Capsule)
+                .enabled(!this.isSubmitting)
+                .backgroundColor(UiColors.BRAND)
+                .fontColor('#FFFFFF')
+                .onClick(() => {
+                  this.selectLocalFile()
+                })
+              Button('高风险样例')
+                .type(ButtonType.Capsule)
+                .enabled(!this.isSubmitting)
+                .backgroundColor(this.selectedDemoPreset === DemoSamplePreset.HIGH_RISK ? UiColors.BRAND : UiColors.SURFACE_SECONDARY)
+                .fontColor(this.selectedDemoPreset === DemoSamplePreset.HIGH_RISK ? '#FFFFFF' : UiColors.TEXT_PRIMARY)
+                .onClick(() => {
+                  this.applyDemoSample(DemoSamplePreset.HIGH_RISK)
+                })
+              Button('低风险样例')
+                .type(ButtonType.Capsule)
+                .enabled(!this.isSubmitting)
+                .backgroundColor(this.selectedDemoPreset === DemoSamplePreset.LOW_RISK ? UiColors.BRAND : UiColors.SURFACE_SECONDARY)
+                .fontColor(this.selectedDemoPreset === DemoSamplePreset.LOW_RISK ? '#FFFFFF' : UiColors.TEXT_PRIMARY)
+                .onClick(() => {
+                  this.applyDemoSample(DemoSamplePreset.LOW_RISK)
+                })
+              Button('清空')
+                .type(ButtonType.Capsule)
+                .enabled(!this.isSubmitting)
+                .backgroundColor(UiColors.SURFACE_SECONDARY)
+                .fontColor(UiColors.TEXT_PRIMARY)
+                .onClick(() => {
+                  this.fileUri = ''
+                  this.fileName = ''
+                  this.selectedDemoPreset = DemoSamplePreset.NONE
+                  this.importVM.reset()
+                  this.errorText = ''
+                })
+            }
+
+            TextInput({ text: this.fileUri, placeholder: '文件 URI / 路径（未选择时可手动输入）' })
+              .width('100%')
+              .enabled(!this.isSubmitting)
+              .backgroundColor(UiColors.SURFACE_MUTED)
+              .borderRadius(UiRadius.MEDIUM)
+              .onChange((value: string) => {
+                this.fileUri = value
+                this.selectedDemoPreset = DemoSamplePreset.NONE
+              })
+            TextInput({ text: this.fileName, placeholder: '文件名（可选）' })
+              .width('100%')
+              .enabled(!this.isSubmitting)
+              .backgroundColor(UiColors.SURFACE_MUTED)
+              .borderRadius(UiRadius.MEDIUM)
+              .onChange((value: string) => {
+                this.fileName = value
+                this.selectedDemoPreset = DemoSamplePreset.NONE
+              })
+
+            if (this.importVM.selectedFileName.length > 0) {
+              Text(`已选择：${this.importVM.selectedFileName} (${this.importVM.selectedFileType})`)
+                .fontSize(13)
+                .fontColor(UiColors.TEXT_SECONDARY)
+            }
+            Text(this.demoSampleHint())
+              .fontSize(12)
+              .fontColor(UiColors.TEXT_SECONDARY)
+            Text(this.demoModeNoticeText)
+              .fontSize(12)
+              .fontColor(this.demoModeNoticeColor)
+          }
+          .alignItems(HorizontalAlign.Start)
+          .width('100%')
+        }
+
+        if (this.isSubmitting) {
+          LoadingState({
+            title: '正在提交分析任务',
+            description: '我们正在校验文件信息并向服务端创建分析任务。',
+            detail: '提交成功后会自动进入“分析中”页面。'
+          })
+        }
+
+        if (this.errorText.length > 0) {
+          SurfaceCard({
+            surfaceColor: '#FFF8F7',
+            strokeColor: '#F2D6D2'
+          }) {
+            Column({ space: UiSpace.MD }) {
+              EmptyState({
+                title: '导入失败',
+                description: this.errorText,
+                hint: this.canContinueDemo ? '可修正服务地址后重试，或继续进入临时 Mock 演示任务。' : '请修正输入信息后重试。',
+                stateType: EmptyStateType.ERROR
+              })
+              Row({ space: UiSpace.SM }) {
+                Button('重试上传')
+                  .type(ButtonType.Capsule)
+                  .enabled(!this.isSubmitting)
+                  .backgroundColor(UiColors.BRAND)
+                  .fontColor('#FFFFFF')
+                  .onClick(() => {
+                    this.startAnalyze()
+                  })
+                if (this.canContinueDemo) {
+                  Button('继续演示')
+                    .type(ButtonType.Capsule)
+                    .backgroundColor(UiColors.SURFACE_SECONDARY)
+                    .fontColor(UiColors.TEXT_PRIMARY)
+                    .onClick(() => {
+                      this.continueDemo()
+                    })
+                }
+              }
+            }
+            .width('100%')
+          }
+        }
+
+        SurfaceCard({
+          surfaceColor: UiColors.SURFACE_ACCENT,
+          strokeColor: UiColors.BRAND_SOFT
+        }) {
+          Column({ space: UiSpace.MD }) {
+            Button(this.isSubmitting ? '提交中...' : '开始分析')
+              .width('100%')
+              .enabled(!this.isSubmitting)
+              .backgroundColor(UiColors.BRAND)
+              .fontColor('#FFFFFF')
+              .onClick(() => {
+                this.startAnalyze()
+              })
+
+            if (this.selectedDemoPreset !== DemoSamplePreset.NONE) {
+              Button('直接演示当前样例')
+                .width('100%')
+                .type(ButtonType.Capsule)
+                .backgroundColor(UiColors.SURFACE_SECONDARY)
+                .fontColor(UiColors.TEXT_PRIMARY)
+                .enabled(!this.isSubmitting)
+                .onClick(() => {
+                  this.startDemoPreview()
+                })
+            }
+          }
+          .width('100%')
+        }
+
+        Text('文本文件会自动读取正文并转为可分析内容；如需快速调试，也可在文件 URI 中填入 `inline://合同正文`。')
+          .fontSize(13)
+          .fontColor(UiColors.TEXT_TERTIARY)
+        }
+        .alignItems(HorizontalAlign.Start)
+        .width('100%')
+      }
     }
-    .justifyContent(FlexAlign.Start)
-    .alignItems(HorizontalAlign.Start)
     .width('100%')
     .height('100%')
-    .padding(24)
   }
 
   async startAnalyze(): Promise<void> {
@@ -465,10 +469,6 @@ struct ImportPage {
       return contractBaseUrl
     }
     return ''
-  }
-
-  isLoopbackBaseUrl(): boolean {
-    return this.baseUrl.indexOf('127.0.0.1') >= 0 || this.baseUrl.indexOf('localhost') >= 0
   }
 
   applyDemoSample(preset: DemoSamplePreset): void {

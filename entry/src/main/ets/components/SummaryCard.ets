@@ -1,4 +1,5 @@
 import { RiskLevel } from '../model/enums/RiskLevel'
+import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
 import { RiskBadge } from './RiskBadge'
 
 @Component
@@ -12,41 +13,71 @@ export struct SummaryCard {
   greenCount: number = 0
 
   build() {
-    Column({ space: 8 }) {
+    Column({ space: UiSpace.MD }) {
+      Text('合同概览')
+        .fontSize(UiFont.BADGE)
+        .fontColor(UiColors.BRAND)
+        .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+        .backgroundColor(UiColors.BRAND_SOFT)
+        .borderRadius(UiRadius.PILL)
+
       Text(this.contractName)
-        .fontSize(20)
-        .fontWeight(FontWeight.Medium)
+        .fontSize(22)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(UiColors.TEXT_PRIMARY)
+
       Text(this.overallSummary)
-        .fontSize(14)
-        .fontColor('#666666')
-      Row({ space: 8 }) {
+        .fontSize(UiFont.BODY)
+        .fontColor(UiColors.TEXT_SECONDARY)
+        .lineHeight(22)
+
+      Row({ space: UiSpace.SM }) {
         RiskBadge({ riskLevel: RiskLevel.RED, count: this.redCount })
         RiskBadge({ riskLevel: RiskLevel.YELLOW, count: this.yellowCount })
         RiskBadge({ riskLevel: RiskLevel.GREEN, count: this.greenCount })
       }
+      .width('100%')
+
       if (this.checklist.length > 0) {
-        Column({ space: 6 }) {
+        Column({ space: UiSpace.SM }) {
           Text('签署前建议确认')
-            .fontSize(14)
-            .fontWeight(FontWeight.Medium)
+            .fontSize(UiFont.BODY)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(UiColors.TEXT_PRIMARY)
           ForEach(this.checklist, (item: string) => {
-            Text(`• ${item}`)
-              .fontSize(13)
-              .fontColor('#444444')
-              .width('100%')
+            Row({ space: UiSpace.SM }) {
+              Text('•')
+                .fontSize(UiFont.BODY)
+                .fontColor(UiColors.BRAND)
+              Text(item)
+                .fontSize(UiFont.BODY_SMALL)
+                .fontColor(UiColors.TEXT_SECONDARY)
+                .width('100%')
+                .lineHeight(20)
+            }
+            .alignItems(VerticalAlign.Top)
+            .width('100%')
           })
         }
         .alignItems(HorizontalAlign.Start)
         .width('100%')
+        .padding(UiSpace.LG)
+        .backgroundColor(UiColors.SURFACE_MUTED)
+        .borderRadius(UiRadius.MEDIUM)
       }
+
       Text(`生成时间：${this.generatedAt}`)
-        .fontSize(12)
-        .fontColor('#999999')
+        .fontSize(UiFont.CAPTION)
+        .fontColor(UiColors.TEXT_TERTIARY)
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .padding(16)
-    .borderRadius(16)
-    .backgroundColor('#F2F3F5')
+    .padding(UiSpace.XL)
+    .borderRadius(UiRadius.LARGE)
+    .backgroundColor(UiColors.SURFACE_PRIMARY)
+    .border({
+      width: 1,
+      color: UiColors.BORDER_SOFT
+    })
   }
 }

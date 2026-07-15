@@ -1,3 +1,5 @@
+import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
+
 @Component
 export struct LoadingState {
   @Prop title: string = '处理中'
@@ -5,26 +7,31 @@ export struct LoadingState {
   @Prop detail: string = ''
 
   build() {
-    Column({ space: 12 }) {
-      LoadingProgress()
-        .width(28)
-        .height(28)
+    Column({ space: UiSpace.MD }) {
+      Row() {
+        LoadingProgress()
+          .width(26)
+          .height(26)
+      }
+      .padding(10)
+      .backgroundColor(UiColors.BRAND_SOFT)
+      .borderRadius(UiRadius.PILL)
 
       Text(this.title)
-        .fontSize(18)
-        .fontWeight(FontWeight.Medium)
-        .fontColor('#182431')
+        .fontSize(UiFont.SECTION_TITLE)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(UiColors.TEXT_PRIMARY)
 
       Text(this.description)
-        .fontSize(14)
-        .fontColor('#445266')
+        .fontSize(UiFont.BODY)
+        .fontColor(UiColors.TEXT_SECONDARY)
         .lineHeight(22)
         .textAlign(TextAlign.Center)
 
       if (this.detail.length > 0) {
         Text(this.detail)
-          .fontSize(12)
-          .fontColor('#6B7280')
+          .fontSize(UiFont.CAPTION)
+          .fontColor(UiColors.TEXT_TERTIARY)
           .lineHeight(18)
           .textAlign(TextAlign.Center)
       }
@@ -32,8 +39,12 @@ export struct LoadingState {
     .justifyContent(FlexAlign.Center)
     .alignItems(HorizontalAlign.Center)
     .width('100%')
-    .padding(20)
-    .borderRadius(20)
-    .backgroundColor('#F2F7FF')
+    .padding(UiSpace.XL)
+    .borderRadius(UiRadius.LARGE)
+    .backgroundColor(UiColors.SURFACE_PRIMARY)
+    .border({
+      width: 1,
+      color: UiColors.BORDER_SOFT
+    })
   }
 }

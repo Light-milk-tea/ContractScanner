@@ -1,3 +1,5 @@
+import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
+
 export enum EmptyStateType {
   EMPTY = 'empty',
   ERROR = 'error',
@@ -12,39 +14,43 @@ export struct EmptyState {
   @Prop stateType: EmptyStateType = EmptyStateType.EMPTY
 
   build() {
-    Column({ space: 10 }) {
+    Column({ space: UiSpace.MD }) {
       Text(this.badgeText())
-        .fontSize(11)
+        .fontSize(UiFont.BADGE)
         .fontColor(this.badgeFontColor())
         .padding({ left: 10, right: 10, top: 4, bottom: 4 })
         .backgroundColor(this.badgeBackgroundColor())
-        .borderRadius(999)
+        .borderRadius(UiRadius.PILL)
 
       Text(this.title)
-        .fontSize(18)
-        .fontWeight(FontWeight.Medium)
-        .fontColor('#182431')
+        .fontSize(UiFont.SECTION_TITLE)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(UiColors.TEXT_PRIMARY)
 
       if (this.description.length > 0) {
         Text(this.description)
-          .fontSize(14)
-          .fontColor('#445266')
+          .fontSize(UiFont.BODY)
+          .fontColor(UiColors.TEXT_SECONDARY)
           .width('100%')
           .lineHeight(22)
       }
 
       if (this.hint.length > 0) {
         Text(this.hint)
-          .fontSize(13)
-          .fontColor('#6B7280')
+          .fontSize(UiFont.BODY_SMALL)
+          .fontColor(UiColors.TEXT_TERTIARY)
           .width('100%')
           .lineHeight(20)
       }
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .padding(16)
-    .borderRadius(20)
+    .padding(UiSpace.XL)
+    .borderRadius(UiRadius.LARGE)
+    .border({
+      width: 1,
+      color: this.badgeBackgroundColor()
+    })
     .backgroundColor(this.cardBackgroundColor())
   }
 
@@ -62,33 +68,33 @@ export struct EmptyState {
   cardBackgroundColor(): string {
     switch (this.stateType) {
       case EmptyStateType.ERROR:
-        return '#FDF2F2'
+        return '#FFF7F6'
       case EmptyStateType.INFO:
-        return '#F2F7FF'
+        return UiColors.SURFACE_ACCENT
       default:
-        return '#F7F8FA'
+        return UiColors.SURFACE_MUTED
     }
   }
 
   badgeBackgroundColor(): string {
     switch (this.stateType) {
       case EmptyStateType.ERROR:
-        return '#FDE2E2'
+        return '#FCE4E0'
       case EmptyStateType.INFO:
-        return '#DCEBFF'
+        return UiColors.BRAND_SOFT
       default:
-        return '#E8ECF2'
+        return UiColors.SURFACE_SECONDARY
     }
   }
 
   badgeFontColor(): string {
     switch (this.stateType) {
       case EmptyStateType.ERROR:
-        return '#C0392B'
+        return UiColors.DANGER
       case EmptyStateType.INFO:
-        return '#2E6BE6'
+        return UiColors.BRAND
       default:
-        return '#56657A'
+        return UiColors.TEXT_SECONDARY
     }
   }
 }
