@@ -1,6 +1,7 @@
 import { common } from '@kit.AbilityKit'
 import { BusinessError } from '@kit.BasicServicesKit'
 import { picker } from '@kit.CoreFileKit'
+import { photoAccessHelper } from '@kit.MediaLibraryKit'
 
 import { back, goAnalyzing, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
@@ -52,7 +53,7 @@ struct ImportPage {
     Column() {
       PageScaffold({
         title: '导入合同',
-        description: '支持导入真实合同，也支持在文件区直接选择演示样例。服务地址请前往用户设置维护，当前已接入本地文件选择，拍照和相册导入将在后续补齐。',
+        description: '支持通过拍照、相册或本地文件导入真实合同，也支持在文件区直接选择演示样例。服务地址请前往用户设置维护。',
         backText: '返回首页',
         onBack: () => {
           back(this.getUIContext())
@@ -72,7 +73,7 @@ struct ImportPage {
                 .backgroundColor(this.importVM.selectedSource === 'CAMERA' ? UiColors.BRAND : UiColors.SURFACE_SECONDARY)
                 .fontColor(this.importVM.selectedSource === 'CAMERA' ? '#FFFFFF' : UiColors.TEXT_PRIMARY)
                 .onClick(() => {
-                  this.importVM.setSelectedSource('CAMERA')
+                  void this.handleSourceSelection('CAMERA')
                 })
               Button('相册')
                 .type(ButtonType.Capsule)
@@ -80,7 +81,7 @@ struct ImportPage {
                 .backgroundColor(this.importVM.selectedSource === 'GALLERY' ? UiColors.BRAND : UiColors.SURFACE_SECONDARY)
                 .fontColor(this.importVM.selectedSource === 'GALLERY' ? '#FFFFFF' : UiColors.TEXT_PRIMARY)
                 .onClick(() => {
-                  this.importVM.setSelectedSource('GALLERY')
+                  void this.handleSourceSelection('GALLERY')
                 })
               Button('本地文件')
                 .type(ButtonType.Capsule)
@@ -88,7 +89,7 @@ struct ImportPage {
                 .backgroundColor(this.importVM.selectedSource === 'LOCAL_FILE' ? UiColors.BRAND : UiColors.SURFACE_SECONDARY)
                 .fontColor(this.importVM.selectedSource === 'LOCAL_FILE' ? '#FFFFFF' : UiColors.TEXT_PRIMARY)
                 .onClick(() => {
-                  this.importVM.setSelectedSource('LOCAL_FILE')
+                  void this.handleSourceSelection('LOCAL_FILE')
                 })
             }
           }
@@ -118,7 +119,7 @@ struct ImportPage {
                 .backgroundColor(UiColors.BRAND)
                 .fontColor('#FFFFFF')
                 .onClick(() => {
-                  this.selectLocalFile()
+                  void this.selectLocalFile()
                 })
               Button('高风险样例')
                 .type(ButtonType.Capsule)
@@ -325,6 +326,23 @@ struct ImportPage {
     }
   }
 
+  async handleSourceSelection(source: string): Promise<void> {
+    this.importVM.setSelectedSource(source)
+    await this.openSelectedSourcePicker()
+  }
+
+  async openSelectedSourcePicker(): Promise<void> {
+    if (this.importVM.selectedSource === 'CAMERA') {
+      await this.selectPhotoFromPicker(true, '拍照合同.jpg')
+      return
+    }
+    if (this.importVM.selectedSource === 'GALLERY') {
+      await this.selectPhotoFromPicker(false, '相册合同.jpg')
+      return
+    }
+    await this.selectLocalFile()
+  }
+
   async selectLocalFile(): Promise<void> {
     this.errorText = ''
     this.importVM.setSelectedSource('LOCAL_FILE')
@@ -368,6 +386,84 @@ struct ImportPage {
         'ImportPage'
       )
       this.errorText = '拉起文件选择器失败，请稍后重试或手动填写文件 URI'
+    }
+  }
+
+  async selectPhotoFromPicker(isPhotoTakingSupported: boolean, fallbackFileName: string): Promise<void> {
+    this.errorText = ''
+    this.importVM.setSelectedSource(isPhotoTakingSupported ? 'CAMERA' : 'GALLERY')
+
+    try {
+      const photoSelectOptions = new photoAccessHelper.PhotoSelectOptions()
+      photoSelectOptions.MIMEType = photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE
+      photoSelectOptions.maxSelectNumber = 1
+      photoSelectOptions.isPhotoTakingSupported = isPhotoTakingSupported
+
+      const photoPicker = new photoAccessHelper.PhotoViewPicker()
+      const photoSelectResult = await photoPicker.select(photoSelectOptions)
+      if (photoSelectResult.photoUris.length === 0) {
+        return
+      }
+
+      const selectedUri = photoSelectResult.photoUris[0]
+      const selectedFileName = this.resolveMediaFileName(selectedUri, fallbackFileName)
+      const meta = this.fileImportService.parseFile(selectedUri, selectedFileName)
+      const selectedFileType = meta.extension.length > 0 ? meta.extension : `${meta.fileType}`.toLowerCase()
+      this.fileUri = meta.fileUri
+      this.fileName = meta.fileName
+      this.selectedDemoPreset = DemoSamplePreset.NONE
+      this.importVM.setSelectedFile(meta.fileName, selectedFileType, meta.fileUri)
+    } catch (error) {
+      if (error instanceof AppError) {
+        this.errorText = `${error.message} (${error.code})`
+        return
+      }
+
+      const businessError = error as BusinessError
+      logError(
+        'Open photo picker failed',
+        `code=${businessError.code}, message=${businessError.message}`,
+        'ImportPage'
+      )
+      this.errorText = isPhotoTakingSupported
+        ? '拉起拍照入口失败，请稍后重试或改用本地文件导入'
+        : '拉起相册选择器失败，请稍后重试或改用本地文件导入'
+    }
+  }
+
+  resolveMediaFileName(fileUri: string, fallbackFileName: string): string {
+    const decodedUri = this.decodeUriSafely(fileUri)
+    const cleanedUri = this.stripQueryString(decodedUri)
+    const slashIndex = cleanedUri.lastIndexOf('/')
+    const candidateName = slashIndex >= 0 ? cleanedUri.substring(slashIndex + 1) : cleanedUri
+    if (candidateName.length === 0) {
+      return fallbackFileName
+    }
+
+    const dotIndex = candidateName.lastIndexOf('.')
+    if (dotIndex <= 0 || dotIndex === candidateName.length - 1) {
+      return fallbackFileName
+    }
+    return candidateName
+  }
+
+  stripQueryString(uri: string): string {
+    const queryIndex = uri.indexOf('?')
+    if (queryIndex < 0) {
+      return uri
+    }
+    return uri.substring(0, queryIndex)
+  }
+
+  decodeUriSafely(rawUri: string): string {
+    if (rawUri.length === 0) {
+      return rawUri
+    }
+
+    try {
+      return decodeURIComponent(rawUri)
+    } catch (_error) {
+      return rawUri
     }
   }
 

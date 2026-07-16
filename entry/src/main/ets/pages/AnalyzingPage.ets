@@ -80,15 +80,9 @@ struct AnalyzingPage {
           })
         }
 
-        if (this.taskId.length > 0 || this.noticeText.length > 0) {
+        if (this.noticeText.length > 0) {
           SurfaceCard() {
             Column({ space: UiSpace.SM }) {
-              if (this.taskId.length > 0) {
-                Text(`任务编号：${this.taskId}`)
-                  .fontSize(12)
-                  .fontColor(UiColors.TEXT_SECONDARY)
-              }
-
               if (this.noticeText.length > 0) {
                 Text(this.noticeText)
                   .fontSize(13)
