@@ -7,7 +7,8 @@ import { back, goAnalyzing, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
 import { logError, logInfo } from '../common/logger'
-import { UiColors, UiRadius, UiSpace } from '../common/ui/DesignTokens'
+import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
+import { GhostButton, PrimaryButton, SegmentChip } from '../components/ActionButtons'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { PageScaffold } from '../components/PageScaffold'
@@ -53,7 +54,7 @@ struct ImportPage {
     Column() {
       PageScaffold({
         title: '导入合同',
-        description: '支持通过拍照、相册或本地文件导入真实合同，也支持在文件区直接选择演示样例。服务地址请前往用户设置维护。',
+        description: '选择来源或演示样例，即可开始分析。',
         backText: '返回首页',
         onBack: () => {
           back(this.getUIContext())
@@ -64,34 +65,35 @@ struct ImportPage {
           Column({ space: UiSpace.MD }) {
             SectionHeader({
               title: '导入方式',
-              description: '先选择合同来源，再继续选择文件；服务地址由用户设置统一管理。'
+              description: '选择合同来源后继续选择文件。'
             })
             Row({ space: UiSpace.SM }) {
-              Button('拍照')
-                .type(ButtonType.Capsule)
-                .enabled(!this.isSubmitting)
-                .backgroundColor(this.importVM.selectedSource === 'CAMERA' ? UiColors.BRAND : UiColors.SURFACE_SECONDARY)
-                .fontColor(this.importVM.selectedSource === 'CAMERA' ? '#FFFFFF' : UiColors.TEXT_PRIMARY)
-                .onClick(() => {
+              SegmentChip({
+                label: '拍照',
+                selected: this.importVM.selectedSource === 'CAMERA',
+                isEnabled: !this.isSubmitting,
+                onTap: () => {
                   void this.handleSourceSelection('CAMERA')
-                })
-              Button('相册')
-                .type(ButtonType.Capsule)
-                .enabled(!this.isSubmitting)
-                .backgroundColor(this.importVM.selectedSource === 'GALLERY' ? UiColors.BRAND : UiColors.SURFACE_SECONDARY)
-                .fontColor(this.importVM.selectedSource === 'GALLERY' ? '#FFFFFF' : UiColors.TEXT_PRIMARY)
-                .onClick(() => {
+                }
+              })
+              SegmentChip({
+                label: '相册',
+                selected: this.importVM.selectedSource === 'GALLERY',
+                isEnabled: !this.isSubmitting,
+                onTap: () => {
                   void this.handleSourceSelection('GALLERY')
-                })
-              Button('本地文件')
-                .type(ButtonType.Capsule)
-                .enabled(!this.isSubmitting)
-                .backgroundColor(this.importVM.selectedSource === 'LOCAL_FILE' ? UiColors.BRAND : UiColors.SURFACE_SECONDARY)
-                .fontColor(this.importVM.selectedSource === 'LOCAL_FILE' ? '#FFFFFF' : UiColors.TEXT_PRIMARY)
-                .onClick(() => {
+                }
+              })
+              SegmentChip({
+                label: '本地文件',
+                selected: this.importVM.selectedSource === 'LOCAL_FILE',
+                isEnabled: !this.isSubmitting,
+                onTap: () => {
                   void this.handleSourceSelection('LOCAL_FILE')
-                })
+                }
+              })
             }
+            .width('100%')
           }
           .alignItems(HorizontalAlign.Start)
           .width('100%')
@@ -100,87 +102,100 @@ struct ImportPage {
         SurfaceCard() {
           Column({ space: UiSpace.MD }) {
             SectionHeader({
-              title: '文件信息',
-              description: '支持 pdf、docx、txt、md、jpg、png 等常见合同文件；也可在这里直接选择高风险或低风险演示样例。'
+              title: '选择文件',
+              description: '支持常见合同格式；也可直接使用演示样例。'
             })
-            Text(`当前服务地址：${this.baseUrl}`)
-              .fontSize(12)
-              .fontColor(UiColors.TEXT_SECONDARY)
-            Text(this.baseUrlNoticeText)
-              .fontSize(12)
-              .fontColor(this.baseUrlNoticeColor)
-            Text(this.apiKeyNoticeText)
-              .fontSize(12)
-              .fontColor(this.apiKeyNoticeColor)
-            Row({ space: UiSpace.SM }) {
-              Button('选择文件')
-                .type(ButtonType.Capsule)
-                .enabled(!this.isSubmitting)
-                .backgroundColor(UiColors.BRAND)
-                .fontColor('#FFFFFF')
-                .onClick(() => {
-                  void this.selectLocalFile()
-                })
-              Button('高风险样例')
-                .type(ButtonType.Capsule)
-                .enabled(!this.isSubmitting)
-                .backgroundColor(this.selectedDemoPreset === DemoSamplePreset.HIGH_RISK ? UiColors.BRAND : UiColors.SURFACE_SECONDARY)
-                .fontColor(this.selectedDemoPreset === DemoSamplePreset.HIGH_RISK ? '#FFFFFF' : UiColors.TEXT_PRIMARY)
-                .onClick(() => {
-                  this.applyDemoSample(DemoSamplePreset.HIGH_RISK)
-                })
-              Button('低风险样例')
-                .type(ButtonType.Capsule)
-                .enabled(!this.isSubmitting)
-                .backgroundColor(this.selectedDemoPreset === DemoSamplePreset.LOW_RISK ? UiColors.BRAND : UiColors.SURFACE_SECONDARY)
-                .fontColor(this.selectedDemoPreset === DemoSamplePreset.LOW_RISK ? '#FFFFFF' : UiColors.TEXT_PRIMARY)
-                .onClick(() => {
-                  this.applyDemoSample(DemoSamplePreset.LOW_RISK)
-                })
-              Button('清空')
-                .type(ButtonType.Capsule)
-                .enabled(!this.isSubmitting)
-                .backgroundColor(UiColors.SURFACE_SECONDARY)
-                .fontColor(UiColors.TEXT_PRIMARY)
-                .onClick(() => {
-                  this.fileUri = ''
-                  this.fileName = ''
-                  this.selectedDemoPreset = DemoSamplePreset.NONE
-                  this.importVM.reset()
-                  this.errorText = ''
-                })
-            }
 
-            TextInput({ text: this.fileUri, placeholder: '文件 URI / 路径（未选择时可手动输入）' })
+            PrimaryButton({
+              label: '选择文件',
+              isEnabled: !this.isSubmitting,
+              fillWidth: true,
+              onTap: () => {
+                void this.selectLocalFile()
+              }
+            })
+
+            Column({ space: UiSpace.SM }) {
+              Text('演示样例')
+                .fontSize(UiFont.CAPTION)
+                .fontColor(UiColors.TEXT_TERTIARY)
+              Row({ space: UiSpace.SM }) {
+                SegmentChip({
+                  label: '高风险样例',
+                  selected: this.selectedDemoPreset === DemoSamplePreset.HIGH_RISK,
+                  isEnabled: !this.isSubmitting,
+                  onTap: () => {
+                    this.applyDemoSample(DemoSamplePreset.HIGH_RISK)
+                  }
+                })
+                SegmentChip({
+                  label: '低风险样例',
+                  selected: this.selectedDemoPreset === DemoSamplePreset.LOW_RISK,
+                  isEnabled: !this.isSubmitting,
+                  onTap: () => {
+                    this.applyDemoSample(DemoSamplePreset.LOW_RISK)
+                  }
+                })
+                GhostButton({
+                  label: '清空',
+                  isEnabled: !this.isSubmitting,
+                  onTap: () => {
+                    this.fileUri = ''
+                    this.fileName = ''
+                    this.selectedDemoPreset = DemoSamplePreset.NONE
+                    this.importVM.reset()
+                    this.errorText = ''
+                  }
+                })
+              }
+            }
+            .alignItems(HorizontalAlign.Start)
+            .width('100%')
+
+            TextInput({ text: this.fileUri, placeholder: '文件 URI / 路径（可选）' })
               .width('100%')
+              .height(44)
               .enabled(!this.isSubmitting)
               .backgroundColor(UiColors.SURFACE_MUTED)
               .borderRadius(UiRadius.MEDIUM)
+              .padding({ left: UiSpace.MD, right: UiSpace.MD })
               .onChange((value: string) => {
                 this.fileUri = value
                 this.selectedDemoPreset = DemoSamplePreset.NONE
               })
             TextInput({ text: this.fileName, placeholder: '文件名（可选）' })
               .width('100%')
+              .height(44)
               .enabled(!this.isSubmitting)
               .backgroundColor(UiColors.SURFACE_MUTED)
               .borderRadius(UiRadius.MEDIUM)
+              .padding({ left: UiSpace.MD, right: UiSpace.MD })
               .onChange((value: string) => {
                 this.fileName = value
                 this.selectedDemoPreset = DemoSamplePreset.NONE
               })
 
             if (this.importVM.selectedFileName.length > 0) {
-              Text(`已选择：${this.importVM.selectedFileName} (${this.importVM.selectedFileType})`)
-                .fontSize(13)
-                .fontColor(UiColors.TEXT_SECONDARY)
+              SurfaceCard({
+                tone: 'inset',
+                paddingValue: UiSpace.MD,
+                radius: UiRadius.MEDIUM
+              }) {
+                Text(`已选择：${this.importVM.selectedFileName} (${this.importVM.selectedFileType})`)
+                  .fontSize(UiFont.BODY_SMALL)
+                  .fontColor(UiColors.TEXT_SECONDARY)
+              }
             }
+
             Text(this.demoSampleHint())
-              .fontSize(12)
+              .fontSize(UiFont.CAPTION)
               .fontColor(UiColors.TEXT_SECONDARY)
             Text(this.demoModeNoticeText)
-              .fontSize(12)
+              .fontSize(UiFont.CAPTION)
               .fontColor(this.demoModeNoticeColor)
+            Text(`服务：${this.baseUrl}`)
+              .fontSize(UiFont.CAPTION)
+              .fontColor(UiColors.TEXT_TERTIARY)
           }
           .alignItems(HorizontalAlign.Start)
           .width('100%')
@@ -189,79 +204,61 @@ struct ImportPage {
         if (this.isSubmitting) {
           LoadingState({
             title: '正在提交分析任务',
-            description: '我们正在校验文件信息并向服务端创建分析任务。',
-            detail: '提交成功后会自动进入“分析中”页面。'
+            description: '正在校验文件并向服务端创建任务。'
           })
         }
 
         if (this.errorText.length > 0) {
-          SurfaceCard({
-            surfaceColor: '#FFF8F7',
-            strokeColor: '#F2D6D2'
-          }) {
-            Column({ space: UiSpace.MD }) {
-              EmptyState({
-                title: '导入失败',
-                description: this.errorText,
-                hint: this.canContinueDemo ? '可修正服务地址后重试，或继续进入临时 Mock 演示任务。' : '请修正输入信息后重试。',
-                stateType: EmptyStateType.ERROR
-              })
-              Row({ space: UiSpace.SM }) {
-                Button('重试上传')
-                  .type(ButtonType.Capsule)
-                  .enabled(!this.isSubmitting)
-                  .backgroundColor(UiColors.BRAND)
-                  .fontColor('#FFFFFF')
-                  .onClick(() => {
-                    this.startAnalyze()
-                  })
-                if (this.canContinueDemo) {
-                  Button('继续演示')
-                    .type(ButtonType.Capsule)
-                    .backgroundColor(UiColors.SURFACE_SECONDARY)
-                    .fontColor(UiColors.TEXT_PRIMARY)
-                    .onClick(() => {
-                      this.continueDemo()
-                    })
-                }
-              }
-            }
-            .width('100%')
-          }
-        }
-
-        SurfaceCard({
-          surfaceColor: UiColors.SURFACE_ACCENT,
-          strokeColor: UiColors.BRAND_SOFT
-        }) {
           Column({ space: UiSpace.MD }) {
-            Button(this.isSubmitting ? '提交中...' : '开始分析')
-              .width('100%')
-              .enabled(!this.isSubmitting)
-              .backgroundColor(UiColors.BRAND)
-              .fontColor('#FFFFFF')
-              .onClick(() => {
-                this.startAnalyze()
+            EmptyState({
+              title: '导入失败',
+              description: this.errorText,
+              hint: this.canContinueDemo ? '可修正后重试，或继续进入演示任务。' : '请修正输入信息后重试。',
+              stateType: EmptyStateType.ERROR
+            })
+            Row({ space: UiSpace.SM }) {
+              PrimaryButton({
+                label: '重试上传',
+                isEnabled: !this.isSubmitting,
+                onTap: () => {
+                  this.startAnalyze()
+                }
               })
-
-            if (this.selectedDemoPreset !== DemoSamplePreset.NONE) {
-              Button('直接演示当前样例')
-                .width('100%')
-                .type(ButtonType.Capsule)
-                .backgroundColor(UiColors.SURFACE_SECONDARY)
-                .fontColor(UiColors.TEXT_PRIMARY)
-                .enabled(!this.isSubmitting)
-                .onClick(() => {
-                  this.startDemoPreview()
+              if (this.canContinueDemo) {
+                GhostButton({
+                  label: '继续演示',
+                  onTap: () => {
+                    this.continueDemo()
+                  }
                 })
+              }
             }
           }
           .width('100%')
         }
 
-        Text('文本文件会自动读取正文并转为可分析内容；如需快速调试，也可在文件 URI 中填入 `inline://合同正文`。')
-          .fontSize(13)
-          .fontColor(UiColors.TEXT_TERTIARY)
+        Column({ space: UiSpace.MD }) {
+          PrimaryButton({
+            label: this.isSubmitting ? '提交中...' : '开始分析',
+            isEnabled: !this.isSubmitting,
+            fillWidth: true,
+            onTap: () => {
+              this.startAnalyze()
+            }
+          })
+
+          if (this.selectedDemoPreset !== DemoSamplePreset.NONE) {
+            GhostButton({
+              label: '直接演示当前样例',
+              isEnabled: !this.isSubmitting,
+              fillWidth: true,
+              onTap: () => {
+                this.startDemoPreview()
+              }
+            })
+          }
+        }
+        .width('100%')
         }
         .alignItems(HorizontalAlign.Start)
         .width('100%')

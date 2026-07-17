@@ -1,4 +1,4 @@
-import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
+import { UiColors, UiFont, UiRadius, UiShadow, UiSpace } from '../common/ui/DesignTokens'
 
 @Component
 export struct LoadingState {
@@ -8,14 +8,10 @@ export struct LoadingState {
 
   build() {
     Column({ space: UiSpace.MD }) {
-      Row() {
-        LoadingProgress()
-          .width(26)
-          .height(26)
-      }
-      .padding(10)
-      .backgroundColor(UiColors.BRAND_SOFT)
-      .borderRadius(UiRadius.PILL)
+      LoadingProgress()
+        .width(36)
+        .height(36)
+        .color(UiColors.BRAND)
 
       Text(this.title)
         .fontSize(UiFont.SECTION_TITLE)
@@ -39,12 +35,14 @@ export struct LoadingState {
     .justifyContent(FlexAlign.Center)
     .alignItems(HorizontalAlign.Center)
     .width('100%')
-    .padding(UiSpace.XL)
+    .padding(UiSpace.XXL)
     .borderRadius(UiRadius.LARGE)
     .backgroundColor(UiColors.SURFACE_PRIMARY)
-    .border({
-      width: 1,
-      color: UiColors.BORDER_SOFT
+    .shadow({
+      radius: UiShadow.SOFT_RADIUS,
+      color: UiShadow.SOFT_COLOR,
+      offsetX: 0,
+      offsetY: 4
     })
   }
 }

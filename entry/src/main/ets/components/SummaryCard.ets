@@ -1,6 +1,4 @@
-import { RiskLevel } from '../model/enums/RiskLevel'
-import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
-import { RiskBadge } from './RiskBadge'
+import { UiColors, UiFont, UiRadius, UiShadow, UiSpace } from '../common/ui/DesignTokens'
 
 @Component
 export struct SummaryCard {
@@ -13,8 +11,8 @@ export struct SummaryCard {
   greenCount: number = 0
 
   build() {
-    Column({ space: UiSpace.MD }) {
-      Text('合同概览')
+    Column({ space: UiSpace.LG }) {
+      Text('合同结论')
         .fontSize(UiFont.BADGE)
         .fontColor(UiColors.BRAND)
         .padding({ left: 10, right: 10, top: 4, bottom: 4 })
@@ -29,12 +27,12 @@ export struct SummaryCard {
       Text(this.overallSummary)
         .fontSize(UiFont.BODY)
         .fontColor(UiColors.TEXT_SECONDARY)
-        .lineHeight(22)
+        .lineHeight(24)
 
       Row({ space: UiSpace.SM }) {
-        RiskBadge({ riskLevel: RiskLevel.RED, count: this.redCount })
-        RiskBadge({ riskLevel: RiskLevel.YELLOW, count: this.yellowCount })
-        RiskBadge({ riskLevel: RiskLevel.GREEN, count: this.greenCount })
+        this.metricCell('高风险', `${this.redCount}`, UiColors.DANGER, UiColors.DANGER_SOFT)
+        this.metricCell('中风险', `${this.yellowCount}`, UiColors.WARNING, UiColors.WARNING_SOFT)
+        this.metricCell('低风险', `${this.greenCount}`, UiColors.SUCCESS, UiColors.SUCCESS_SOFT)
       }
       .width('100%')
 
@@ -42,7 +40,7 @@ export struct SummaryCard {
         Column({ space: UiSpace.SM }) {
           Text('签署前建议确认')
             .fontSize(UiFont.BODY)
-            .fontWeight(FontWeight.Bold)
+            .fontWeight(FontWeight.Medium)
             .fontColor(UiColors.TEXT_PRIMARY)
           ForEach(this.checklist, (item: string) => {
             Row({ space: UiSpace.SM }) {
@@ -52,7 +50,7 @@ export struct SummaryCard {
               Text(item)
                 .fontSize(UiFont.BODY_SMALL)
                 .fontColor(UiColors.TEXT_SECONDARY)
-                .width('100%')
+                .layoutWeight(1)
                 .lineHeight(20)
             }
             .alignItems(VerticalAlign.Top)
@@ -62,7 +60,7 @@ export struct SummaryCard {
         .alignItems(HorizontalAlign.Start)
         .width('100%')
         .padding(UiSpace.LG)
-        .backgroundColor(UiColors.SURFACE_MUTED)
+        .backgroundColor(UiColors.SURFACE_INSET)
         .borderRadius(UiRadius.MEDIUM)
       }
 
@@ -72,12 +70,32 @@ export struct SummaryCard {
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .padding(UiSpace.XL)
-    .borderRadius(UiRadius.LARGE)
+    .padding(UiSpace.XXL)
+    .borderRadius(UiRadius.XLARGE)
     .backgroundColor(UiColors.SURFACE_PRIMARY)
-    .border({
-      width: 1,
-      color: UiColors.BORDER_SOFT
+    .shadow({
+      radius: UiShadow.CARD_RADIUS,
+      color: UiShadow.CARD_COLOR,
+      offsetX: 0,
+      offsetY: UiShadow.CARD_OFFSET_Y
     })
+  }
+
+  @Builder
+  metricCell(label: string, value: string, color: string, soft: string) {
+    Column({ space: UiSpace.XS }) {
+      Text(value)
+        .fontSize(22)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(color)
+      Text(label)
+        .fontSize(UiFont.CAPTION)
+        .fontColor(UiColors.TEXT_SECONDARY)
+    }
+    .layoutWeight(1)
+    .padding(UiSpace.MD)
+    .backgroundColor(soft)
+    .borderRadius(UiRadius.MEDIUM)
+    .alignItems(HorizontalAlign.Center)
   }
 }

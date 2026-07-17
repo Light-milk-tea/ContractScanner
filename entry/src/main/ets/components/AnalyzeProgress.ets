@@ -1,5 +1,5 @@
 import { AnalyzeStatus } from '../model/enums/AnalyzeStatus'
-import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
+import { UiColors, UiFont, UiRadius, UiShadow, UiSpace } from '../common/ui/DesignTokens'
 
 @Component
 export struct AnalyzeProgress {
@@ -8,35 +8,59 @@ export struct AnalyzeProgress {
   @Prop progressValue: number = 0
 
   build() {
-    Column({ space: UiSpace.MD }) {
-      Text('任务进展')
-        .fontSize(UiFont.BADGE)
-        .fontColor(UiColors.BRAND)
-        .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-        .backgroundColor(UiColors.BRAND_SOFT)
-        .borderRadius(UiRadius.PILL)
+    Column({ space: UiSpace.LG }) {
+      Column({ space: UiSpace.SM }) {
+        Text(this.humanizedStatus())
+          .fontSize(22)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(UiColors.TEXT_PRIMARY)
+          .textAlign(TextAlign.Center)
 
-      Text(this.humanizedStatus())
-        .fontSize(UiFont.SECTION_TITLE)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(UiColors.TEXT_PRIMARY)
+        Text(this.progressText)
+          .fontSize(UiFont.BODY)
+          .fontColor(UiColors.TEXT_SECONDARY)
+          .lineHeight(22)
+          .textAlign(TextAlign.Center)
+      }
+      .alignItems(HorizontalAlign.Center)
+      .width('100%')
 
-      Text(this.progressText)
-        .fontSize(UiFont.BODY)
-        .fontColor(UiColors.TEXT_SECONDARY)
-        .lineHeight(22)
+      Stack({ alignContent: Alignment.Center }) {
+        Progress({ value: this.progressValue, total: 100, type: ProgressType.Ring })
+          .width(128)
+          .height(128)
+          .color(this.progressColor())
+
+        Text(`${Math.floor(this.progressValue)}%`)
+          .fontSize(24)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(UiColors.TEXT_PRIMARY)
+      }
+      .width(128)
+      .height(128)
 
       Progress({ value: this.progressValue, total: 100, type: ProgressType.Linear })
         .width('100%')
-        .color(UiColors.BRAND)
+        .height(8)
+        .color(this.progressColor())
+        .borderRadius(UiRadius.PILL)
     }
+    .justifyContent(FlexAlign.Center)
+    .alignItems(HorizontalAlign.Center)
     .width('100%')
-    .padding(UiSpace.XL)
-    .borderRadius(UiRadius.LARGE)
+    .padding({
+      left: UiSpace.XXL,
+      right: UiSpace.XXL,
+      top: UiSpace.XXXL,
+      bottom: UiSpace.XXXL
+    })
+    .borderRadius(UiRadius.XLARGE)
     .backgroundColor(UiColors.SURFACE_PRIMARY)
-    .border({
-      width: 1,
-      color: UiColors.BORDER_SOFT
+    .shadow({
+      radius: UiShadow.CARD_RADIUS,
+      color: UiShadow.CARD_COLOR,
+      offsetX: 0,
+      offsetY: UiShadow.CARD_OFFSET_Y
     })
   }
 
@@ -53,5 +77,15 @@ export struct AnalyzeProgress {
       default:
         return '任务已创建'
     }
+  }
+
+  progressColor(): string {
+    if (this.status === AnalyzeStatus.FAILED) {
+      return UiColors.DANGER
+    }
+    if (this.status === AnalyzeStatus.SUCCESS) {
+      return UiColors.SUCCESS
+    }
+    return UiColors.BRAND
   }
 }

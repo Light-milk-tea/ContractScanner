@@ -4,9 +4,11 @@ import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
 import { logError, logInfo } from '../common/logger'
 import { readingMaxWidth } from '../common/ui/LayoutHelpers'
-import { UiColors, UiSpace } from '../common/ui/DesignTokens'
+import { UiColors, UiFont, UiSpace } from '../common/ui/DesignTokens'
+import { GhostButton, PrimaryButton } from '../components/ActionButtons'
 import { ClauseBlock } from '../components/ClauseBlock'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
+import { LoadingState } from '../components/LoadingState'
 import { PageScaffold } from '../components/PageScaffold'
 import { SurfaceCard } from '../components/SurfaceCard'
 import { AnalysisResult } from '../model/domain/AnalysisResult'
@@ -46,7 +48,7 @@ struct ClauseComparePage {
     Column() {
       PageScaffold({
         title: '条款对照阅读',
-        description: '这里会按阅读顺序展示原文、白话解释、风险原因和修改建议，适合逐条精读。',
+        description: '原文、白话、风险原因与修改建议。',
         backText: '返回结果页',
         onBack: () => {
           back(this.getUIContext())
@@ -54,14 +56,10 @@ struct ClauseComparePage {
       }) {
         Column({ space: UiSpace.LG }) {
         if (this.isLoading) {
-          SurfaceCard({
-            surfaceColor: UiColors.SURFACE_ACCENT,
-            strokeColor: UiColors.BRAND_SOFT
-          }) {
-            Text('正在加载条款详情...')
-              .fontSize(14)
-              .fontColor(UiColors.TEXT_SECONDARY)
-          }
+          LoadingState({
+            title: '正在加载条款详情',
+            description: '正在整理原文与解释内容。'
+          })
         }
 
         if (this.errorText.length > 0) {
@@ -69,25 +67,23 @@ struct ClauseComparePage {
             EmptyState({
               title: '条款详情加载异常',
               description: this.errorText,
-              hint: this.isUsingDemoResult ? '当前页面已回退到演示条款，可继续查看内容，或返回结果页重新进入。' : '可重试加载真实条款，或先切换到演示条款继续讲解。',
+              hint: this.isUsingDemoResult ? '当前为演示条款，可继续查看。' : '可重试或切换演示条款。',
               stateType: EmptyStateType.ERROR
             })
             Row({ space: UiSpace.SM }) {
-              Button('重试加载')
-                .type(ButtonType.Capsule)
-                .backgroundColor(UiColors.BRAND)
-                .fontColor('#FFFFFF')
-                .onClick(() => {
+              PrimaryButton({
+                label: '重试加载',
+                onTap: () => {
                   this.loadClauseDetail()
-                })
+                }
+              })
               if (!this.isUsingDemoResult) {
-                Button('查看演示条款')
-                  .type(ButtonType.Capsule)
-                  .backgroundColor(UiColors.SURFACE_SECONDARY)
-                  .fontColor(UiColors.TEXT_PRIMARY)
-                  .onClick(() => {
+                GhostButton({
+                  label: '查看演示条款',
+                  onTap: () => {
                     this.openDemoClause()
-                  })
+                  }
+                })
               }
             }
           }
@@ -100,10 +96,11 @@ struct ClauseComparePage {
             SurfaceCard({
               surfaceColor: UiColors.SURFACE_ACCENT,
               strokeColor: UiColors.BRAND_SOFT,
-              paddingValue: UiSpace.LG
+              paddingValue: UiSpace.LG,
+              tone: 'flat'
             }) {
               Text('已开启隐私防窥，当前条款详情页会限制截屏和录屏。')
-                .fontSize(12)
+                .fontSize(UiFont.CAPTION)
                 .fontColor(UiColors.BRAND)
             }
           }

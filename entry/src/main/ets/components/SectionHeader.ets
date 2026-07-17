@@ -1,4 +1,4 @@
-import { UiColors, UiFont, UiSpace } from '../common/ui/DesignTokens'
+import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
 
 @Component
 export struct SectionHeader {
@@ -8,14 +8,14 @@ export struct SectionHeader {
   @Prop alignCenter: boolean = false
 
   build() {
-    Column({ space: UiSpace.SM }) {
+    Column({ space: UiSpace.XS }) {
       if (this.badgeText.length > 0) {
         Text(this.badgeText)
           .fontSize(UiFont.BADGE)
           .fontColor(UiColors.BRAND)
           .padding({ left: 10, right: 10, top: 4, bottom: 4 })
           .backgroundColor(UiColors.BRAND_SOFT)
-          .borderRadius(999)
+          .borderRadius(UiRadius.PILL)
       }
 
       Text(this.title)

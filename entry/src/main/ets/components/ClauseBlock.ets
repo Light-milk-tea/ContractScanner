@@ -1,5 +1,5 @@
 import { RiskLevel } from '../model/enums/RiskLevel'
-import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
+import { LayoutMetrics, UiColors, UiFont, UiRadius, UiShadow, UiSpace } from '../common/ui/DesignTokens'
 import { RiskBadge } from './RiskBadge'
 
 @Component
@@ -14,34 +14,35 @@ export struct ClauseBlock {
 
   build() {
     Column({ space: UiSpace.LG }) {
-      Column({ space: UiSpace.SM }) {
-        Text('条款精读')
-          .fontSize(UiFont.BADGE)
-          .fontColor(UiColors.BRAND)
-          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-          .backgroundColor(UiColors.BRAND_SOFT)
+      Row({ space: UiSpace.MD }) {
+        Column()
+          .width(LayoutMetrics.RISK_BAR_WIDTH)
+          .height(42)
           .borderRadius(UiRadius.PILL)
+          .backgroundColor(this.riskBarColor())
 
-        Row({ space: UiSpace.SM }) {
+        Column({ space: UiSpace.XS }) {
           Text(this.title)
             .fontSize(20)
             .fontWeight(FontWeight.Bold)
             .fontColor(UiColors.TEXT_PRIMARY)
-          RiskBadge({ riskLevel: this.riskLevel })
+          if (this.anchorText.length > 0) {
+            Text(this.anchorText)
+              .fontSize(UiFont.CAPTION)
+              .fontColor(UiColors.TEXT_TERTIARY)
+          }
         }
-        .width('100%')
-        .justifyContent(FlexAlign.SpaceBetween)
-      }
+        .alignItems(HorizontalAlign.Start)
+        .layoutWeight(1)
 
-      if (this.anchorText.length > 0) {
-        Text(this.anchorText)
-          .fontSize(UiFont.CAPTION)
-          .fontColor(UiColors.TEXT_TERTIARY)
+        RiskBadge({ riskLevel: this.riskLevel })
       }
+      .width('100%')
+      .alignItems(VerticalAlign.Center)
 
-      this.buildSection('原文条款', this.originalText, UiColors.TEXT_PRIMARY, UiColors.SURFACE_MUTED)
+      this.buildSection('原文条款', this.originalText, UiColors.TEXT_PRIMARY, UiColors.SURFACE_INSET)
       this.buildSection('白话解释', this.plainText, UiColors.TEXT_SECONDARY, UiColors.SURFACE_ACCENT)
-      this.buildSection('风险原因', this.riskReason, UiColors.TEXT_PRIMARY, '#FFF8EE')
+      this.buildSection('风险原因', this.riskReason, UiColors.TEXT_PRIMARY, UiColors.WARNING_SOFT)
 
       if (this.suggestion.length > 0) {
         this.buildSection('修改建议', this.suggestion, UiColors.BRAND_STRONG, UiColors.BRAND_SOFT)
@@ -49,26 +50,38 @@ export struct ClauseBlock {
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .padding(UiSpace.XL)
-    .borderRadius(UiRadius.LARGE)
+    .padding(UiSpace.XXL)
+    .borderRadius(UiRadius.XLARGE)
     .backgroundColor(UiColors.SURFACE_PRIMARY)
-    .border({
-      width: 1,
-      color: UiColors.BORDER_SOFT
+    .shadow({
+      radius: UiShadow.CARD_RADIUS,
+      color: UiShadow.CARD_COLOR,
+      offsetX: 0,
+      offsetY: UiShadow.CARD_OFFSET_Y
     })
+  }
+
+  riskBarColor(): string {
+    if (this.riskLevel === RiskLevel.RED) {
+      return UiColors.DANGER
+    }
+    if (this.riskLevel === RiskLevel.YELLOW) {
+      return UiColors.WARNING
+    }
+    return UiColors.SUCCESS
   }
 
   @Builder
   buildSection(title: string, content: string, textColor: string, backgroundColor: string) {
     Column({ space: UiSpace.SM }) {
       Text(title)
-        .fontSize(UiFont.BODY)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(UiColors.TEXT_PRIMARY)
+        .fontSize(UiFont.CAPTION)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(UiColors.TEXT_TERTIARY)
       Text(content)
         .fontSize(UiFont.BODY)
         .fontColor(textColor)
-        .lineHeight(22)
+        .lineHeight(24)
         .width('100%')
     }
     .alignItems(HorizontalAlign.Start)

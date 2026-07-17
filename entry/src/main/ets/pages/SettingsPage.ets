@@ -1,7 +1,8 @@
 import { common } from '@kit.AbilityKit'
 import { back } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
-import { UiColors, UiRadius, UiSpace } from '../common/ui/DesignTokens'
+import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
+import { GhostButton, PrimaryButton, SegmentChip } from '../components/ActionButtons'
 import { PageScaffold } from '../components/PageScaffold'
 import { SectionHeader } from '../components/SectionHeader'
 import { SurfaceCard } from '../components/SurfaceCard'
@@ -43,7 +44,7 @@ struct SettingsPage {
     Column() {
       PageScaffold({
         title: '用户设置',
-        description: '这里集中管理模型联调所需配置、隐私防窥和答辩演示模式。',
+        description: '服务联调、隐私防窥与答辩演示模式。',
         backText: '返回',
         onBack: () => {
           back(this.getUIContext())
@@ -54,7 +55,7 @@ struct SettingsPage {
             Column({ space: UiSpace.MD }) {
               SectionHeader({
                 title: '服务地址',
-                description: '导入页会直接读取这里保存的服务地址；真机或模拟器联调时请填写电脑局域网 IP。'
+                description: '真机联调请填写电脑局域网 IP。'
               })
 
               TextInput({
@@ -62,38 +63,38 @@ struct SettingsPage {
                 placeholder: '例如：http://192.168.x.x:3000'
               })
                 .width('100%')
+                .height(44)
                 .backgroundColor(UiColors.SURFACE_MUTED)
                 .borderRadius(UiRadius.MEDIUM)
+                .padding({ left: UiSpace.MD, right: UiSpace.MD })
                 .onChange((value: string) => {
                   this.serviceBaseUrlInput = value
                   this.serviceBaseUrlStatusText = ''
                 })
 
               if (this.isLoopbackBaseUrl(this.serviceBaseUrlInput)) {
-                Text('当前是本机回环地址；在真机或模拟器上请改成电脑局域网 IP，例如 http://192.168.x.x:3000。')
-                  .fontSize(12)
+                Text('当前是本机回环地址；真机请改成局域网 IP。')
+                  .fontSize(UiFont.CAPTION)
                   .fontColor(UiColors.DANGER)
               }
 
               Row({ space: UiSpace.SM }) {
-                Button('保存地址')
-                  .type(ButtonType.Capsule)
-                  .backgroundColor(UiColors.BRAND)
-                  .fontColor('#FFFFFF')
-                  .onClick(() => {
+                PrimaryButton({
+                  label: '保存地址',
+                  onTap: () => {
                     this.saveServiceBaseUrl()
-                  })
-                Button('恢复默认')
-                  .type(ButtonType.Capsule)
-                  .backgroundColor(UiColors.SURFACE_SECONDARY)
-                  .fontColor(UiColors.TEXT_PRIMARY)
-                  .onClick(() => {
+                  }
+                })
+                GhostButton({
+                  label: '恢复默认',
+                  onTap: () => {
                     this.clearServiceBaseUrl()
-                  })
+                  }
+                })
               }
 
-              Text(this.serviceBaseUrlStatusText.length > 0 ? this.serviceBaseUrlStatusText : '默认地址仅适用于本机调试；答辩或模拟器演示建议改为宿主机局域网地址。')
-                .fontSize(12)
+              Text(this.serviceBaseUrlStatusText.length > 0 ? this.serviceBaseUrlStatusText : '默认地址仅适用于本机调试。')
+                .fontSize(UiFont.CAPTION)
                 .fontColor(this.serviceBaseUrlStatusText.length > 0 ? this.serviceBaseUrlStatusColor : UiColors.TEXT_SECONDARY)
             }
             .alignItems(HorizontalAlign.Start)
@@ -104,67 +105,65 @@ struct SettingsPage {
             Column({ space: UiSpace.MD }) {
               SectionHeader({
                 title: '模型 API Key',
-                description: '密钥仅保存在当前设备本地，用于后续服务接入与真实模型联调。'
+                description: '密钥仅保存在当前设备本地。'
               })
 
               Row({ space: UiSpace.SM }) {
                 TextInput({
                   text: this.apiKeyInput,
-                  placeholder: '请输入 API Key，例如 sk-xxxxxxxxxxxxxxxx'
+                  placeholder: '请输入 API Key'
                 })
                   .type(this.isApiKeyVisible ? InputType.Normal : InputType.Password)
                   .maxLength(API_KEY_MAX_LENGTH)
-                  .width('78%')
+                  .layoutWeight(1)
+                  .height(44)
                   .backgroundColor(UiColors.SURFACE_MUTED)
                   .borderRadius(UiRadius.MEDIUM)
+                  .padding({ left: UiSpace.MD, right: UiSpace.MD })
                   .onChange((value: string) => {
                     this.apiKeyInput = value
                     this.statusText = ''
                   })
 
-                Button(this.isApiKeyVisible ? '隐藏' : '显示')
-                  .type(ButtonType.Capsule)
-                  .width('22%')
-                  .backgroundColor(UiColors.SURFACE_SECONDARY)
-                  .fontColor(UiColors.TEXT_PRIMARY)
-                  .onClick(() => {
+                GhostButton({
+                  label: this.isApiKeyVisible ? '隐藏' : '显示',
+                  onTap: () => {
                     this.isApiKeyVisible = !this.isApiKeyVisible
-                  })
+                  }
+                })
               }
               .width('100%')
 
               Text(this.validationMessage())
-                .fontSize(12)
+                .fontSize(UiFont.CAPTION)
                 .fontColor(this.isApiKeyFormatValid() ? UiColors.SUCCESS : UiColors.DANGER)
 
               Row({ space: UiSpace.SM }) {
-                Button('保存到本地')
-                  .type(ButtonType.Capsule)
-                  .enabled(this.canSaveApiKey())
-                  .backgroundColor(UiColors.BRAND)
-                  .fontColor('#FFFFFF')
-                  .onClick(() => {
+                PrimaryButton({
+                  label: '保存到本地',
+                  isEnabled: this.canSaveApiKey(),
+                  onTap: () => {
                     this.saveApiKey()
-                  })
-                Button('清空')
-                  .type(ButtonType.Capsule)
-                  .backgroundColor(UiColors.SURFACE_SECONDARY)
-                  .fontColor(UiColors.TEXT_PRIMARY)
-                  .enabled(this.hasStoredApiKey || this.apiKeyInput.length > 0)
-                  .onClick(() => {
+                  }
+                })
+                GhostButton({
+                  label: '清空',
+                  isEnabled: this.hasStoredApiKey || this.apiKeyInput.length > 0,
+                  onTap: () => {
                     this.clearApiKey()
-                  })
+                  }
+                })
               }
 
               if (this.hasStoredApiKey) {
                 Text(this.savedApiKeySummary())
-                  .fontSize(13)
+                  .fontSize(UiFont.BODY_SMALL)
                   .fontColor(UiColors.TEXT_SECONDARY)
               }
 
               if (this.statusText.length > 0) {
                 Text(this.statusText)
-                  .fontSize(13)
+                  .fontSize(UiFont.BODY_SMALL)
                   .fontColor(this.statusColor)
               }
             }
@@ -175,84 +174,115 @@ struct SettingsPage {
           SurfaceCard() {
             Column({ space: UiSpace.MD }) {
               SectionHeader({
-                title: '系统控制项',
-                description: '集中管理敏感信息保护和答辩演示时的异常模拟。'
+                title: '系统控制',
+                description: '隐私保护与答辩异常演示。'
               })
 
               Row() {
-                Column({ space: 4 }) {
+                Column({ space: UiSpace.XS }) {
                   Text('隐私防窥')
-                    .fontSize(16)
+                    .fontSize(UiFont.BODY)
                     .fontWeight(FontWeight.Medium)
-                  Text('在结果页与条款对照页启用系统隐私窗口，限制截屏与录屏。')
-                    .fontSize(13)
+                    .fontColor(UiColors.TEXT_PRIMARY)
+                  Text('结果页与条款页启用系统隐私窗口。')
+                    .fontSize(UiFont.BODY_SMALL)
                     .fontColor(UiColors.TEXT_SECONDARY)
-                  Text(this.privacyGuardEnabled ? '当前状态：已开启，敏感页面会自动套用隐私窗口。' : '当前状态：已关闭，敏感页面按普通窗口显示。')
-                    .fontSize(12)
+                  Text(this.privacyGuardEnabled ? '当前：已开启' : '当前：已关闭')
+                    .fontSize(UiFont.CAPTION)
                     .fontColor(this.privacyGuardEnabled ? UiColors.SUCCESS : UiColors.TEXT_TERTIARY)
-                  if (this.privacyGuardHint.length > 0) {
-                    Text(this.privacyGuardHint)
-                      .fontSize(12)
-                      .fontColor(UiColors.BRAND)
-                  }
                 }
                 .alignItems(HorizontalAlign.Start)
+                .layoutWeight(1)
 
-                Button(this.privacyGuardEnabled ? '关闭' : '开启')
-                  .type(ButtonType.Capsule)
-                  .backgroundColor(this.privacyGuardEnabled ? UiColors.SURFACE_SECONDARY : UiColors.BRAND)
-                  .fontColor(this.privacyGuardEnabled ? UiColors.TEXT_PRIMARY : '#FFFFFF')
-                  .onClick(() => {
-                    this.togglePrivacyGuard()
+                if (this.privacyGuardEnabled) {
+                  GhostButton({
+                    label: '关闭',
+                    onTap: () => {
+                      this.togglePrivacyGuard()
+                    }
                   })
+                } else {
+                  PrimaryButton({
+                    label: '开启',
+                    onTap: () => {
+                      this.togglePrivacyGuard()
+                    }
+                  })
+                }
               }
               .width('100%')
-              .justifyContent(FlexAlign.SpaceBetween)
               .alignItems(VerticalAlign.Center)
-              .padding({ top: 8, bottom: 8 })
+              .padding({ top: UiSpace.SM, bottom: UiSpace.SM })
 
-              this.buildSettingHint('日志调试', '后续将在此补齐日志开关与调试信息展示能力。')
+              this.buildSettingHint('日志调试', '后续将补齐日志开关与调试信息。')
 
               Column({ space: UiSpace.SM }) {
                 Text('答辩演示模式')
-                  .fontSize(16)
+                  .fontSize(UiFont.BODY)
                   .fontWeight(FontWeight.Medium)
-                Text('用于主动触发弱网、超时、服务失败或降级展示，不依赖现场网络偶发问题。')
-                  .fontSize(13)
+                  .fontColor(UiColors.TEXT_PRIMARY)
+                Text('主动触发弱网、超时、服务失败或降级展示。')
+                  .fontSize(UiFont.BODY_SMALL)
                   .fontColor(UiColors.TEXT_SECONDARY)
 
                 Row({ space: UiSpace.SM }) {
-                  this.buildDemoModeButton(DemoFaultMode.NONE, '正常')
-                  this.buildDemoModeButton(DemoFaultMode.WEAK_NETWORK, '弱网')
-                  this.buildDemoModeButton(DemoFaultMode.TIMEOUT, '超时')
+                  SegmentChip({
+                    label: '正常',
+                    selected: this.demoFaultMode === DemoFaultMode.NONE,
+                    onTap: () => {
+                      this.saveDemoFaultMode(DemoFaultMode.NONE)
+                    }
+                  })
+                  SegmentChip({
+                    label: '弱网',
+                    selected: this.demoFaultMode === DemoFaultMode.WEAK_NETWORK,
+                    onTap: () => {
+                      this.saveDemoFaultMode(DemoFaultMode.WEAK_NETWORK)
+                    }
+                  })
+                  SegmentChip({
+                    label: '超时',
+                    selected: this.demoFaultMode === DemoFaultMode.TIMEOUT,
+                    onTap: () => {
+                      this.saveDemoFaultMode(DemoFaultMode.TIMEOUT)
+                    }
+                  })
                 }
 
                 Row({ space: UiSpace.SM }) {
-                  this.buildDemoModeButton(DemoFaultMode.SERVICE_ERROR, '服务失败')
-                  this.buildDemoModeButton(DemoFaultMode.DEGRADE_TO_DEMO, '降级展示')
+                  SegmentChip({
+                    label: '服务失败',
+                    selected: this.demoFaultMode === DemoFaultMode.SERVICE_ERROR,
+                    onTap: () => {
+                      this.saveDemoFaultMode(DemoFaultMode.SERVICE_ERROR)
+                    }
+                  })
+                  SegmentChip({
+                    label: '降级展示',
+                    selected: this.demoFaultMode === DemoFaultMode.DEGRADE_TO_DEMO,
+                    onTap: () => {
+                      this.saveDemoFaultMode(DemoFaultMode.DEGRADE_TO_DEMO)
+                    }
+                  })
                 }
 
                 Text(`当前模式：${this.demoFaultModeLabel(this.demoFaultMode)}`)
-                  .fontSize(12)
+                  .fontSize(UiFont.CAPTION)
                   .fontColor(this.demoFaultMode === DemoFaultMode.NONE ? UiColors.TEXT_TERTIARY : UiColors.SUCCESS)
 
                 if (this.demoFaultHint.length > 0) {
                   Text(this.demoFaultHint)
-                    .fontSize(12)
+                    .fontSize(UiFont.CAPTION)
                     .fontColor(UiColors.BRAND)
                 }
               }
               .alignItems(HorizontalAlign.Start)
               .width('100%')
-              .padding({ top: 8, bottom: 8 })
+              .padding({ top: UiSpace.SM, bottom: UiSpace.SM })
             }
             .alignItems(HorizontalAlign.Start)
             .width('100%')
           }
-
-          Text('当前实现基于 ArkData Preferences 本地存储，适用于手机、平板等设备场景；后续服务接入时将优先复用该配置。')
-            .fontSize(12)
-            .fontColor(UiColors.TEXT_TERTIARY)
         }
         .alignItems(HorizontalAlign.Start)
         .width('100%')

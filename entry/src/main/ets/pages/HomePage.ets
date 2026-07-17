@@ -3,11 +3,11 @@ import { goImport, goResultOverview, goSettings, RouteParams } from '../app/AppR
 import { API_BASE_URL } from '../common/constants'
 import { logError } from '../common/logger'
 import { contentMaxWidth, pageHorizontalPadding, pageVerticalPadding } from '../common/ui/LayoutHelpers'
-import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
+import { LayoutMetrics, UiColors, UiFont, UiRadius, UiShadow, UiSpace } from '../common/ui/DesignTokens'
+import { GhostButton, PrimaryButton } from '../components/ActionButtons'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { SectionHeader } from '../components/SectionHeader'
-import { SurfaceCard } from '../components/SurfaceCard'
 import { Contract } from '../model/domain/Contract'
 import { AnalyzeStatus } from '../model/enums/AnalyzeStatus'
 import { HomeVM } from '../model/viewmodel/HomeVM'
@@ -36,184 +36,188 @@ struct HomePage {
 
   build() {
     Scroll() {
-      Column({ space: UiSpace.XL }) {
-        SurfaceCard({
-          surfaceColor: UiColors.SURFACE_PRIMARY,
-          strokeColor: UiColors.BRAND_SOFT,
-          paddingValue: UiSpace.XXL,
-          radius: UiRadius.LARGE
-        }) {
-          Column({ space: UiSpace.LG }) {
-            Row() {
-              Column({ space: UiSpace.SM }) {
-                Text('法言白话')
-                  .fontSize(UiFont.HERO)
-                  .fontWeight(FontWeight.Bold)
-                  .fontColor(UiColors.TEXT_PRIMARY)
-                Text('把晦涩合同变成可快速理解的白话摘要，并提前标出值得注意的风险条款。')
-                  .fontSize(UiFont.BODY)
-                  .fontColor(UiColors.TEXT_SECONDARY)
-                  .lineHeight(22)
-              }
-              .alignItems(HorizontalAlign.Start)
+      Column({ space: UiSpace.XXL }) {
+        Column({ space: UiSpace.XL }) {
+          Row() {
+            Blank()
+            Text('设置')
+              .fontSize(UiFont.BODY_SMALL)
+              .fontColor(UiColors.BRAND)
+              .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+              .backgroundColor(UiColors.SURFACE_PRIMARY)
+              .borderRadius(UiRadius.PILL)
+              .shadow({
+                radius: UiShadow.SOFT_RADIUS,
+                color: UiShadow.SOFT_COLOR,
+                offsetX: 0,
+                offsetY: 4
+              })
+              .onClick(() => {
+                goSettings(this.getUIContext())
+              })
+          }
+          .width('100%')
 
-              Button('设置')
-                .type(ButtonType.Capsule)
-                .backgroundColor(UiColors.BRAND_SOFT)
-                .fontColor(UiColors.BRAND)
-                .onClick(() => {
-                  goSettings(this.getUIContext())
-                })
-            }
-            .width('100%')
-            .justifyContent(FlexAlign.SpaceBetween)
+          Column({ space: UiSpace.MD }) {
+            Text('法言白话')
+              .fontSize(UiFont.HERO)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(UiColors.TEXT_PRIMARY)
+              .letterSpacing(0.5)
 
-            SurfaceCard({
-              surfaceColor: UiColors.SURFACE_ACCENT,
-              strokeColor: UiColors.BRAND_SOFT,
-              paddingValue: UiSpace.LG,
-              radius: UiRadius.MEDIUM
-            }) {
-              Column({ space: UiSpace.SM }) {
-                Text('三步完成合同速览')
-                  .fontSize(UiFont.BODY)
-                  .fontWeight(FontWeight.Bold)
-                  .fontColor(UiColors.TEXT_PRIMARY)
-                Text('导入合同 -> 等待分析 -> 查看摘要、风险和条款解释。')
-                  .fontSize(UiFont.BODY_SMALL)
-                  .fontColor(UiColors.TEXT_SECONDARY)
-              }
-              .alignItems(HorizontalAlign.Start)
+            Text('把晦涩合同变成可快速理解的白话摘要，并提前标出值得注意的风险条款。')
+              .fontSize(UiFont.BODY)
+              .fontColor(UiColors.TEXT_SECONDARY)
+              .lineHeight(24)
               .width('100%')
-            }
-
-            Row({ space: UiSpace.MD }) {
-              Button('开始导入合同')
-                .type(ButtonType.Capsule)
-                .backgroundColor(UiColors.BRAND)
-                .fontColor('#FFFFFF')
-                .onClick(() => {
-                  goImport(this.getUIContext())
-                })
-
-              Button('查看用户设置')
-                .type(ButtonType.Capsule)
-                .backgroundColor(UiColors.SURFACE_SECONDARY)
-                .fontColor(UiColors.TEXT_PRIMARY)
-                .onClick(() => {
-                  goSettings(this.getUIContext())
-                })
-            }
           }
           .alignItems(HorizontalAlign.Start)
           .width('100%')
+
+          Row({ space: UiSpace.SM }) {
+            this.stepChip('1', '导入')
+            Text('→')
+              .fontSize(UiFont.CAPTION)
+              .fontColor(UiColors.TEXT_TERTIARY)
+            this.stepChip('2', '分析')
+            Text('→')
+              .fontSize(UiFont.CAPTION)
+              .fontColor(UiColors.TEXT_TERTIARY)
+            this.stepChip('3', '解读')
+          }
+          .width('100%')
+          .justifyContent(FlexAlign.Start)
+
+          PrimaryButton({
+            label: '导入合同',
+            fillWidth: true,
+            onTap: () => {
+              goImport(this.getUIContext())
+            }
+          })
         }
+        .alignItems(HorizontalAlign.Start)
+        .width('100%')
+        .padding({
+          left: UiSpace.XXL,
+          right: UiSpace.XXL,
+          top: UiSpace.XXL,
+          bottom: UiSpace.XXL
+        })
+        .borderRadius(UiRadius.XLARGE)
+        .linearGradient({
+          angle: 145,
+          colors: [
+            [UiColors.SURFACE_PRIMARY, 0.0],
+            [UiColors.SURFACE_ACCENT, 1.0]
+          ]
+        })
+        .shadow({
+          radius: UiShadow.CARD_RADIUS,
+          color: UiShadow.CARD_COLOR,
+          offsetX: 0,
+          offsetY: UiShadow.CARD_OFFSET_Y
+        })
 
         Column({ space: UiSpace.MD }) {
           SectionHeader({
             title: '最近记录',
-            description: '保留最近 5 条已查看结果，方便你快速回看上次分析。'
+            description: '本地保留最近 5 条结果，便于快速回看。'
           })
 
           if (this.isLoadingRecentContracts) {
             LoadingState({
               title: '正在加载最近记录',
-              description: '我们正在读取本地缓存中的历史分析结果。',
-              detail: '若刚从结果页返回，列表会自动刷新。'
+              description: '正在读取本地缓存中的历史分析结果。'
             })
           } else if (this.recentErrorText.length > 0) {
             Column({ space: UiSpace.MD }) {
               EmptyState({
                 title: '最近记录读取失败',
                 description: this.recentErrorText,
-                hint: '可点击重试重新加载本地缓存，也可以直接发起新的合同分析。',
+                hint: '可重试加载，或直接发起新的合同分析。',
                 stateType: EmptyStateType.ERROR
               })
               Row({ space: UiSpace.SM }) {
-                Button('重试读取')
-                  .type(ButtonType.Capsule)
-                  .backgroundColor(UiColors.BRAND)
-                  .fontColor('#FFFFFF')
-                  .onClick(() => {
+                PrimaryButton({
+                  label: '重试读取',
+                  onTap: () => {
                     this.loadRecentContracts()
-                  })
-                Button('导入合同')
-                  .type(ButtonType.Capsule)
-                  .backgroundColor(UiColors.SURFACE_SECONDARY)
-                  .fontColor(UiColors.TEXT_PRIMARY)
-                  .onClick(() => {
+                  }
+                })
+                GhostButton({
+                  label: '导入合同',
+                  onTap: () => {
                     goImport(this.getUIContext())
-                  })
+                  }
+                })
               }
             }
             .width('100%')
           } else if (this.recentContracts.length > 0) {
-            Column({ space: UiSpace.MD }) {
+            Column({ space: UiSpace.SM }) {
               ForEach(this.visibleRecentContracts(), (contract: Contract) => {
-                Button() {
-                  Column({ space: UiSpace.MD }) {
-                    Row() {
-                      Column({ space: UiSpace.XS }) {
-                        Text(contract.contractName)
-                          .fontSize(18)
-                          .fontWeight(FontWeight.Bold)
-                          .fontColor(UiColors.TEXT_PRIMARY)
-                          .maxLines(2)
-                        Text(contract.taskId)
-                          .fontSize(UiFont.CAPTION)
-                          .fontColor(UiColors.TEXT_TERTIARY)
-                          .maxLines(1)
-                      }
-                      .alignItems(HorizontalAlign.Start)
+                Row({ space: UiSpace.MD }) {
+                  Column()
+                    .width(LayoutMetrics.RISK_BAR_WIDTH)
+                    .height(36)
+                    .borderRadius(UiRadius.PILL)
+                    .backgroundColor(this.statusBarColor(contract.status))
 
-                      Text(this.statusLabel(contract.status))
-                        .fontSize(UiFont.CAPTION)
-                        .fontColor(UiColors.BRAND)
-                        .padding({ left: 10, right: 10, top: 5, bottom: 5 })
-                        .backgroundColor(UiColors.BRAND_SOFT)
-                        .borderRadius(UiRadius.PILL)
-                    }
-                    .width('100%')
-                    .justifyContent(FlexAlign.SpaceBetween)
-
-                    Row() {
-                      Text(contract.createdAt ?? '生成时间待更新')
-                        .fontSize(UiFont.CAPTION)
-                        .fontColor(UiColors.TEXT_SECONDARY)
-                      Text('进入结果总览')
-                        .fontSize(UiFont.CAPTION)
-                        .fontColor(UiColors.BRAND)
-                    }
-                    .width('100%')
-                    .justifyContent(FlexAlign.SpaceBetween)
+                  Column({ space: UiSpace.XS }) {
+                    Text(contract.contractName)
+                      .fontSize(UiFont.BODY)
+                      .fontWeight(FontWeight.Medium)
+                      .fontColor(UiColors.TEXT_PRIMARY)
+                      .maxLines(1)
+                      .textOverflow({ overflow: TextOverflow.Ellipsis })
+                    Text(contract.createdAt ?? '生成时间待更新')
+                      .fontSize(UiFont.CAPTION)
+                      .fontColor(UiColors.TEXT_TERTIARY)
+                      .maxLines(1)
                   }
                   .alignItems(HorizontalAlign.Start)
-                  .width('100%')
-                  .padding(UiSpace.LG)
-                  .backgroundColor(UiColors.SURFACE_PRIMARY)
-                  .borderRadius(UiRadius.MEDIUM)
-                  .border({
-                    width: 1,
-                    color: UiColors.BORDER_SOFT
-                  })
+                  .layoutWeight(1)
+
+                  Text(this.statusLabel(contract.status))
+                    .fontSize(UiFont.BADGE)
+                    .fontColor(UiColors.BRAND)
+                    .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+                    .backgroundColor(UiColors.BRAND_SOFT)
+                    .borderRadius(UiRadius.PILL)
+
+                  Text('›')
+                    .fontSize(22)
+                    .fontColor(UiColors.TEXT_TERTIARY)
                 }
-                .type(ButtonType.Normal)
                 .width('100%')
-                .backgroundColor(UiColors.PAGE_BACKGROUND)
+                .height(64)
+                .alignItems(VerticalAlign.Center)
+                .padding({
+                  left: UiSpace.MD,
+                  right: UiSpace.LG
+                })
+                .backgroundColor(UiColors.SURFACE_PRIMARY)
                 .borderRadius(UiRadius.MEDIUM)
+                .shadow({
+                  radius: UiShadow.SOFT_RADIUS,
+                  color: UiShadow.SOFT_COLOR,
+                  offsetX: 0,
+                  offsetY: 4
+                })
                 .onClick(() => {
                   this.openRecentContract(contract)
                 })
               }, (contract: Contract) => contract.taskId)
 
               if (this.shouldShowRecentToggle()) {
-                Button(this.recentToggleText())
-                  .type(ButtonType.Capsule)
-                  .backgroundColor(UiColors.SURFACE_SECONDARY)
-                  .fontColor(UiColors.TEXT_PRIMARY)
-                  .onClick(() => {
+                GhostButton({
+                  label: this.recentToggleText(),
+                  fillWidth: true,
+                  onTap: () => {
                     this.isRecentExpanded = !this.isRecentExpanded
-                  })
+                  }
+                })
               }
             }
             .width('100%')
@@ -221,17 +225,17 @@ struct HomePage {
             Column({ space: UiSpace.MD }) {
               EmptyState({
                 title: '暂无最近记录',
-                description: '完成一次分析并进入结果页后，最近 5 条记录会显示在这里。',
-                hint: '建议先导入一份演示合同，跑通上传、分析和结果查看主链路。',
+                description: '完成一次分析并进入结果页后，最近记录会显示在这里。',
+                hint: '可先导入演示合同，跑通主链路。',
                 stateType: EmptyStateType.EMPTY
               })
-              Button('开始分析')
-                .type(ButtonType.Capsule)
-                .backgroundColor(UiColors.BRAND)
-                .fontColor('#FFFFFF')
-                .onClick(() => {
+              PrimaryButton({
+                label: '开始分析',
+                fillWidth: true,
+                onTap: () => {
                   goImport(this.getUIContext())
-                })
+                }
+              })
             }
             .width('100%')
           }
@@ -245,13 +249,41 @@ struct HomePage {
         left: pageHorizontalPadding(),
         right: pageHorizontalPadding(),
         top: pageVerticalPadding(),
-        bottom: pageVerticalPadding()
+        bottom: pageVerticalPadding() + 12
       })
       .alignItems(HorizontalAlign.Start)
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(UiColors.PAGE_BACKGROUND)
+    .linearGradient({
+      angle: 180,
+      colors: [
+        [UiColors.PAGE_GRADIENT_TOP, 0.0],
+        [UiColors.PAGE_GRADIENT_BOTTOM, 0.4],
+        [UiColors.PAGE_BACKGROUND, 1.0]
+      ]
+    })
+  }
+
+  @Builder
+  stepChip(index: string, label: string) {
+    Row({ space: UiSpace.XS }) {
+      Text(index)
+        .fontSize(UiFont.BADGE)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(UiColors.BRAND)
+        .width(20)
+        .height(20)
+        .textAlign(TextAlign.Center)
+        .borderRadius(UiRadius.PILL)
+        .backgroundColor(UiColors.SURFACE_PRIMARY)
+      Text(label)
+        .fontSize(UiFont.BODY_SMALL)
+        .fontColor(UiColors.TEXT_SECONDARY)
+    }
+    .padding({ left: 8, right: 12, top: 6, bottom: 6 })
+    .backgroundColor(UiColors.BRAND_SOFT)
+    .borderRadius(UiRadius.PILL)
   }
 
   async loadRecentContracts(): Promise<void> {
@@ -332,6 +364,20 @@ struct HomePage {
         return '分析失败'
       default:
         return '已缓存'
+    }
+  }
+
+  statusBarColor(status?: AnalyzeStatus): string {
+    switch (status) {
+      case AnalyzeStatus.FAILED:
+        return UiColors.DANGER
+      case AnalyzeStatus.SUCCESS:
+        return UiColors.SUCCESS
+      case AnalyzeStatus.LLM_RUNNING:
+      case AnalyzeStatus.OCR_RUNNING:
+        return UiColors.BRAND
+      default:
+        return UiColors.TEXT_TERTIARY
     }
   }
 }

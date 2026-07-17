@@ -4,9 +4,9 @@ import { API_BASE_URL, RoutePath } from '../common/constants'
 import { AppError, ErrorCode } from '../common/errors'
 import { logError, logInfo } from '../common/logger'
 import { UiColors, UiSpace } from '../common/ui/DesignTokens'
+import { GhostButton, PrimaryButton } from '../components/ActionButtons'
 import { AnalyzeProgress } from '../components/AnalyzeProgress'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
-import { LoadingState } from '../components/LoadingState'
 import { PageScaffold } from '../components/PageScaffold'
 import { SurfaceCard } from '../components/SurfaceCard'
 import { AnalyzeStatus } from '../model/enums/AnalyzeStatus'
@@ -59,39 +59,28 @@ struct AnalyzingPage {
     Column() {
       PageScaffold({
         title: '分析中',
-        description: '系统正在持续推进 OCR 与模型分析流程，完成后会自动为你打开结果页。',
+        description: '完成后会自动打开结果页。',
         backText: '返回首页',
         onBack: () => {
           this.leaveToHome()
         }
       }) {
-        Column({ space: UiSpace.LG }) {
+        Column({ space: UiSpace.XL }) {
         AnalyzeProgress({
           status: this.status,
           progressText: this.progressText,
           progressValue: this.progressValue
         })
 
-        if (this.shouldShowPollingState()) {
-          LoadingState({
-            title: this.pollingTitle(),
-            description: this.pollingDescription(),
-            detail: this.pollingDetail()
-          })
-        }
-
         if (this.noticeText.length > 0) {
-          SurfaceCard() {
-            Column({ space: UiSpace.SM }) {
-              if (this.noticeText.length > 0) {
-                Text(this.noticeText)
-                  .fontSize(13)
-                  .fontColor(UiColors.WARNING)
-                  .lineHeight(20)
-              }
-            }
-            .alignItems(HorizontalAlign.Start)
-            .width('100%')
+          SurfaceCard({
+            tone: 'inset',
+            paddingValue: UiSpace.LG
+          }) {
+            Text(this.noticeText)
+              .fontSize(13)
+              .fontColor(UiColors.WARNING)
+              .lineHeight(20)
           }
         }
 
@@ -99,56 +88,56 @@ struct AnalyzingPage {
           EmptyState({
             title: '分析未完成',
             description: this.errorText.length > 0 ? this.errorText : '分析任务执行失败，请重试或返回重新发起分析。',
-            hint: '修正服务地址或服务状态后，可点击“重试”重新发起轮询。',
+            hint: '可点击“重试”重新发起轮询。',
             stateType: EmptyStateType.ERROR
           })
         }
 
-        SurfaceCard({
-          surfaceColor: UiColors.SURFACE_ACCENT,
-          strokeColor: UiColors.BRAND_SOFT
-        }) {
-          Row({ space: UiSpace.SM }) {
-            Button('返回首页')
-              .type(ButtonType.Capsule)
-              .backgroundColor(UiColors.SURFACE_SECONDARY)
-              .fontColor(UiColors.TEXT_PRIMARY)
-              .onClick(() => {
-                this.leaveToHome()
-              })
-
-            if (this.status === AnalyzeStatus.FAILED || this.errorText.length > 0) {
-              Button('重试')
-                .type(ButtonType.Capsule)
-                .enabled(!this.isPolling)
-                .backgroundColor(UiColors.BRAND)
-                .fontColor('#FFFFFF')
-                .onClick(() => {
-                  this.retry()
-                })
-            }
-
-            if (this.canGoResult && !this.isNavigatingToResult) {
-              Button('查看结果')
-                .type(ButtonType.Capsule)
-                .enabled(!this.isNavigatingToResult)
-                .backgroundColor(UiColors.BRAND)
-                .fontColor('#FFFFFF')
-                .onClick(() => {
-                  this.goResult()
-                })
-            }
-
-            Button(this.isPolling ? '自动刷新中...' : '开始轮询')
-              .type(ButtonType.Capsule)
-              .enabled(!this.isPolling)
-              .backgroundColor(this.isPolling ? UiColors.SURFACE_SECONDARY : UiColors.SURFACE_MUTED)
-              .fontColor(UiColors.TEXT_PRIMARY)
-              .onClick(() => {
-                this.startPolling()
-              })
+        Column({ space: UiSpace.MD }) {
+          if (this.canGoResult && !this.isNavigatingToResult) {
+            PrimaryButton({
+              label: '查看结果',
+              fillWidth: true,
+              isEnabled: !this.isNavigatingToResult,
+              onTap: () => {
+                this.goResult()
+              }
+            })
           }
+
+          if (this.status === AnalyzeStatus.FAILED || this.errorText.length > 0) {
+            PrimaryButton({
+              label: '重试',
+              fillWidth: true,
+              isEnabled: !this.isPolling,
+              onTap: () => {
+                this.retry()
+              }
+            })
+          }
+
+          Row({ space: UiSpace.SM }) {
+            GhostButton({
+              label: '返回首页',
+              fillWidth: true,
+              onTap: () => {
+                this.leaveToHome()
+              }
+            })
+            if (!this.canGoResult && this.status !== AnalyzeStatus.FAILED) {
+              GhostButton({
+                label: this.isPolling ? '刷新中' : '开始轮询',
+                fillWidth: true,
+                isEnabled: !this.isPolling,
+                onTap: () => {
+                  this.startPolling()
+                }
+              })
+            }
+          }
+          .width('100%')
         }
+        .width('100%')
         }
         .alignItems(HorizontalAlign.Start)
         .width('100%')
@@ -251,8 +240,10 @@ struct AnalyzingPage {
     this.taskId = this.analyzeVM.taskId
     this.status = this.analyzeVM.status
     this.progressText = this.analyzeVM.progressText
-    this.progressValue = this.analyzeVM.progressValue
     this.canGoResult = this.analyzeVM.canGoResult()
+    this.getUIContext().animateTo({ duration: 320, curve: Curve.EaseOut }, () => {
+      this.progressValue = this.analyzeVM.progressValue
+    })
   }
 
   scheduleNextDemoStep(): void {

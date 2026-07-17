@@ -1,4 +1,4 @@
-import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
+import { UiColors, UiFont, UiRadius, UiShadow, UiSpace } from '../common/ui/DesignTokens'
 
 export enum EmptyStateType {
   EMPTY = 'empty',
@@ -15,12 +15,14 @@ export struct EmptyState {
 
   build() {
     Column({ space: UiSpace.MD }) {
-      Text(this.badgeText())
-        .fontSize(UiFont.BADGE)
+      Text(this.iconGlyph())
+        .fontSize(28)
         .fontColor(this.badgeFontColor())
-        .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-        .backgroundColor(this.badgeBackgroundColor())
+        .width(48)
+        .height(48)
+        .textAlign(TextAlign.Center)
         .borderRadius(UiRadius.PILL)
+        .backgroundColor(this.badgeBackgroundColor())
 
       Text(this.title)
         .fontSize(UiFont.SECTION_TITLE)
@@ -47,39 +49,41 @@ export struct EmptyState {
     .width('100%')
     .padding(UiSpace.XL)
     .borderRadius(UiRadius.LARGE)
-    .border({
-      width: 1,
-      color: this.badgeBackgroundColor()
-    })
     .backgroundColor(this.cardBackgroundColor())
+    .shadow({
+      radius: UiShadow.SOFT_RADIUS,
+      color: UiShadow.SOFT_COLOR,
+      offsetX: 0,
+      offsetY: 4
+    })
   }
 
-  badgeText(): string {
+  iconGlyph(): string {
     switch (this.stateType) {
       case EmptyStateType.ERROR:
-        return '异常提醒'
+        return '!'
       case EmptyStateType.INFO:
-        return '状态说明'
+        return 'i'
       default:
-        return '暂无数据'
+        return '◦'
     }
   }
 
   cardBackgroundColor(): string {
     switch (this.stateType) {
       case EmptyStateType.ERROR:
-        return '#FFF7F6'
+        return '#FFF8F7'
       case EmptyStateType.INFO:
         return UiColors.SURFACE_ACCENT
       default:
-        return UiColors.SURFACE_MUTED
+        return UiColors.SURFACE_PRIMARY
     }
   }
 
   badgeBackgroundColor(): string {
     switch (this.stateType) {
       case EmptyStateType.ERROR:
-        return '#FCE4E0'
+        return UiColors.DANGER_SOFT
       case EmptyStateType.INFO:
         return UiColors.BRAND_SOFT
       default:

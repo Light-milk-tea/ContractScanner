@@ -32,30 +32,30 @@ struct RecentContractCard {
         Text(this.cardTitle)
           .fontSize(18)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#182431')
+          .fontColor('#151B2B')
 
         Text(this.contractName)
           .fontSize(16)
           .fontWeight(FontWeight.Medium)
           .maxLines(2)
-          .fontColor('#0F172A')
+          .fontColor('#151B2B')
 
         Text(this.statusText)
           .fontSize(12)
           .maxLines(2)
-          .fontColor('#475569')
+          .fontColor('#5A6780')
 
         if (this.generatedAt.length > 0) {
           Text(this.generatedAt)
             .fontSize(11)
-            .fontColor('#64748B')
+            .fontColor('#8A95A8')
         }
 
         Row() {
           Text(this.actionText)
             .fontSize(12)
             .fontColor('#2E6BE6')
-          Text('>')
+          Text('›')
             .fontSize(12)
             .fontColor('#2E6BE6')
         }
@@ -66,8 +66,14 @@ struct RecentContractCard {
       .height('100%')
       .width('100%')
       .padding(16)
-      .backgroundColor('#F8FAFC')
-      .borderRadius(24)
+      .linearGradient({
+        angle: 145,
+        colors: [
+          ['#FFFFFF', 0.0],
+          ['#EAF2FF', 1.0]
+        ]
+      })
+      .borderRadius(22)
     }
     .width('100%')
     .height('100%')

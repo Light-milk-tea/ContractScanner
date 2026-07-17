@@ -3,7 +3,8 @@ import { back, goClauseCompare, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
 import { logError, logInfo } from '../common/logger'
-import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
+import { UiColors, UiFont, UiRadius, UiShadow, UiSpace } from '../common/ui/DesignTokens'
+import { GhostButton, PrimaryButton } from '../components/ActionButtons'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { PageScaffold } from '../components/PageScaffold'
@@ -58,7 +59,7 @@ struct ResultOverviewPage {
     Column() {
       PageScaffold({
         title: '结果总览',
-        description: '先看整体结论，再逐条阅读风险说明和对应条款解释。',
+        description: '先看结论，再逐条精读风险条款。',
         backText: '返回',
         onBack: () => {
           back(this.getUIContext())
@@ -68,8 +69,7 @@ struct ResultOverviewPage {
         if (this.isLoading) {
           LoadingState({
             title: '正在加载分析结果',
-            description: '我们正在整理合同摘要、风险统计和条款详情。',
-            detail: '首次进入或切换任务时会自动刷新。'
+            description: '正在整理合同摘要与风险条款。'
           })
         }
 
@@ -78,27 +78,25 @@ struct ResultOverviewPage {
             EmptyState({
               title: '结果加载异常',
               description: this.errorText,
-              hint: this.isUsingDemoResult ? '当前展示的是临时演示结果；你可以继续查看内容，或重试拉取真实结果。' : '请检查服务状态、API Key 与模型额度后重试加载。',
+              hint: this.isUsingDemoResult ? '当前为演示结果，可继续查看或重试真实结果。' : '请检查服务状态后重试。',
               stateType: EmptyStateType.ERROR
             })
             Row({ space: UiSpace.SM }) {
-              Button('重试加载')
-                .type(ButtonType.Capsule)
-                .enabled(!this.isLoading)
-                .backgroundColor(UiColors.BRAND)
-                .fontColor('#FFFFFF')
-                .onClick(() => {
+              PrimaryButton({
+                label: '重试加载',
+                isEnabled: !this.isLoading,
+                onTap: () => {
                   this.retryLoadResult()
-                })
+                }
+              })
               if (!this.isUsingDemoResult) {
-                Button('查看演示结果')
-                  .type(ButtonType.Capsule)
-                  .enabled(!this.isLoading)
-                  .backgroundColor(UiColors.SURFACE_SECONDARY)
-                  .fontColor(UiColors.TEXT_PRIMARY)
-                  .onClick(() => {
+                GhostButton({
+                  label: '查看演示结果',
+                  isEnabled: !this.isLoading,
+                  onTap: () => {
                     this.openDemoResult()
-                  })
+                  }
+                })
               }
             }
           }
@@ -111,10 +109,11 @@ struct ResultOverviewPage {
               surfaceColor: UiColors.SURFACE_ACCENT,
               strokeColor: UiColors.BRAND_SOFT,
               paddingValue: UiSpace.LG,
-              radius: UiRadius.MEDIUM
+              radius: UiRadius.MEDIUM,
+              tone: 'flat'
             }) {
               Text('已开启隐私防窥，当前页面会限制截屏和录屏。')
-                .fontSize(12)
+                .fontSize(UiFont.CAPTION)
                 .fontColor(UiColors.BRAND)
             }
           }
@@ -129,64 +128,60 @@ struct ResultOverviewPage {
             greenCount: this.currentResult.riskStats.green
           })
 
-          SurfaceCard() {
-            Column({ space: UiSpace.MD }) {
-              SectionHeader({
-                title: '风险统计',
-                description: '按风险等级快速判断这份合同当前的关注重点。'
-              })
-              Row({ space: UiSpace.SM }) {
-                RiskBadge({ riskLevel: RiskLevel.RED, count: this.currentResult.riskStats.red })
-                RiskBadge({ riskLevel: RiskLevel.YELLOW, count: this.currentResult.riskStats.yellow })
-                RiskBadge({ riskLevel: RiskLevel.GREEN, count: this.currentResult.riskStats.green })
-              }
-            }
-            .alignItems(HorizontalAlign.Start)
-            .width('100%')
-          }
-
           Column({ space: UiSpace.MD }) {
             SectionHeader({
               title: '风险条目',
-              description: '点击任一条目可继续查看原文、白话解释和修改建议。'
+              description: '点击条目查看原文、白话解释与修改建议。'
             })
             ForEach(this.currentResult.clauses, (clause: ClauseRisk) => {
-              Button() {
-                Column({ space: UiSpace.MD }) {
+              Row({ space: UiSpace.MD }) {
+                Column()
+                  .width(4)
+                  .height(48)
+                  .borderRadius(UiRadius.PILL)
+                  .backgroundColor(this.riskBarColor(clause.riskLevel))
+
+                Column({ space: UiSpace.SM }) {
                   Row({ space: UiSpace.SM }) {
                     Text(clause.title)
-                      .fontSize(UiFont.SECTION_TITLE)
-                      .fontWeight(FontWeight.Bold)
+                      .fontSize(UiFont.BODY)
+                      .fontWeight(FontWeight.Medium)
                       .fontColor(UiColors.TEXT_PRIMARY)
+                      .layoutWeight(1)
                       .maxLines(2)
                     RiskBadge({ riskLevel: clause.riskLevel })
                   }
                   .width('100%')
-                  .justifyContent(FlexAlign.SpaceBetween)
 
                   Text(clause.riskReason)
-                    .fontSize(13)
+                    .fontSize(UiFont.BODY_SMALL)
                     .fontColor(UiColors.TEXT_SECONDARY)
                     .maxLines(2)
                     .lineHeight(20)
 
-                  Text('查看原文与白话解释')
-                    .fontSize(12)
+                  Text('查看对照阅读 ›')
+                    .fontSize(UiFont.CAPTION)
                     .fontColor(UiColors.BRAND)
                 }
                 .alignItems(HorizontalAlign.Start)
-                .width('100%')
-                .padding(UiSpace.LG)
-                .backgroundColor(UiColors.SURFACE_PRIMARY)
-                .borderRadius(UiRadius.MEDIUM)
-                .border({
-                  width: 1,
-                  color: UiColors.BORDER_SOFT
-                })
+                .layoutWeight(1)
               }
-              .type(ButtonType.Normal)
-              .backgroundColor(UiColors.PAGE_BACKGROUND)
+              .width('100%')
+              .alignItems(VerticalAlign.Center)
+              .padding({
+                left: UiSpace.MD,
+                right: UiSpace.LG,
+                top: UiSpace.LG,
+                bottom: UiSpace.LG
+              })
+              .backgroundColor(UiColors.SURFACE_PRIMARY)
               .borderRadius(UiRadius.MEDIUM)
+              .shadow({
+                radius: UiShadow.SOFT_RADIUS,
+                color: UiShadow.SOFT_COLOR,
+                offsetX: 0,
+                offsetY: 4
+              })
               .onClick(() => {
                 this.openClauseCompare(clause.clauseId)
               })
@@ -369,4 +364,13 @@ struct ResultOverviewPage {
     await this.continueService.clearLastViewedResult(hostContext)
   }
 
+  riskBarColor(level: RiskLevel): string {
+    if (level === RiskLevel.RED) {
+      return UiColors.DANGER
+    }
+    if (level === RiskLevel.YELLOW) {
+      return UiColors.WARNING
+    }
+    return UiColors.SUCCESS
+  }
 }
