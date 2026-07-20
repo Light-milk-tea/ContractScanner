@@ -26,11 +26,11 @@ const API_KEY_PATTERN: RegExp = /^[A-Za-z0-9._-]+$/
 struct SettingsPage {
   @State serviceBaseUrlInput: string = API_BASE_URL
   @State serviceBaseUrlStatusText: string = ''
-  @State serviceBaseUrlStatusColor: string = '#2E6BE6'
+  @State serviceBaseUrlStatusColor: string = UiColors.BRAND
   @State apiKeyInput: string = ''
   @State isApiKeyVisible: boolean = false
   @State statusText: string = ''
-  @State statusColor: string = '#2E6BE6'
+  @State statusColor: string = UiColors.BRAND
   @State hasStoredApiKey: boolean = false
   @State privacyGuardEnabled: boolean = false
   @State privacyGuardHint: string = ''
@@ -60,13 +60,14 @@ struct SettingsPage {
         }
       }) {
         Column({ space: UiSpace.LG }) {
-          SurfaceCard() {
+          SurfaceCard({ tone: 'soft' }) {
             Column({ space: UiSpace.MD }) {
               SectionHeader({
                 title: '服务地址',
                 description: isEmulatorRuntime()
                   ? `模拟器优先走电脑局域网 IP（当前 ${DEV_HOST_LAN_IP}）。`
-                  : '真机联调请填写电脑局域网 IP。'
+                  : '真机联调请填写电脑局域网 IP。',
+                alignCenter: false
               })
 
               TextInput({
@@ -145,11 +146,12 @@ struct SettingsPage {
             .width('100%')
           }
 
-          SurfaceCard() {
+          SurfaceCard({ tone: 'soft' }) {
             Column({ space: UiSpace.MD }) {
               SectionHeader({
                 title: '模型 API Key',
-                description: '密钥仅保存在当前设备本地。'
+                description: '密钥仅保存在当前设备本地。',
+                alignCenter: false
               })
 
               Row({ space: UiSpace.SM }) {
@@ -215,11 +217,12 @@ struct SettingsPage {
             .width('100%')
           }
 
-          SurfaceCard() {
+          SurfaceCard({ tone: 'soft' }) {
             Column({ space: UiSpace.MD }) {
               SectionHeader({
                 title: '系统控制',
-                description: '隐私保护与答辩异常演示。'
+                description: '隐私保护与答辩异常演示。',
+                alignCenter: false
               })
 
               Row() {
@@ -361,9 +364,15 @@ struct SettingsPage {
   @Builder
   buildDemoModeButton(mode: DemoFaultMode, label: string) {
     Button(label)
-      .type(ButtonType.Capsule)
-      .backgroundColor(this.demoFaultMode === mode ? UiColors.BRAND : UiColors.SURFACE_SECONDARY)
-      .fontColor(this.demoFaultMode === mode ? '#FFFFFF' : UiColors.TEXT_PRIMARY)
+      .type(ButtonType.Normal)
+      .height(40)
+      .borderRadius(UiRadius.MEDIUM)
+      .backgroundColor(this.demoFaultMode === mode ? UiColors.BRAND : UiColors.SURFACE_MUTED)
+      .fontColor(this.demoFaultMode === mode ? UiColors.TEXT_ON_BRAND : UiColors.TEXT_PRIMARY)
+      .border({
+        width: 1,
+        color: this.demoFaultMode === mode ? UiColors.BRAND : UiColors.BORDER_SOFT
+      })
       .onClick(() => {
         this.saveDemoFaultMode(mode)
       })
@@ -381,7 +390,7 @@ struct SettingsPage {
     const hostContext = this.getHostContext()
     if (hostContext === undefined) {
       this.serviceBaseUrlStatusText = '当前页面上下文不可用，暂时无法读取服务地址配置'
-      this.serviceBaseUrlStatusColor = '#C0392B'
+      this.serviceBaseUrlStatusColor = UiColors.DANGER
       return
     }
 
@@ -392,18 +401,18 @@ struct SettingsPage {
       this.serviceBaseUrlStatusText = isEmulatorRuntime()
         ? `当前使用模拟器自动联网地址（${DEV_HOST_LAN_IP}:3000）。`
         : '当前使用默认服务地址。'
-      this.serviceBaseUrlStatusColor = '#2E6BE6'
+      this.serviceBaseUrlStatusColor = UiColors.BRAND
       return
     }
     this.serviceBaseUrlStatusText = '已读取本地保存的服务地址。'
-    this.serviceBaseUrlStatusColor = '#2A8F5B'
+    this.serviceBaseUrlStatusColor = UiColors.SUCCESS
   }
 
   async loadApiKey(): Promise<void> {
     const hostContext = this.getHostContext()
     if (hostContext === undefined) {
       this.statusText = '当前页面上下文不可用，暂时无法读取本地配置'
-      this.statusColor = '#C0392B'
+      this.statusColor = UiColors.DANGER
       return
     }
 
@@ -411,7 +420,7 @@ struct SettingsPage {
     this.apiKeyInput = savedApiKey
     this.hasStoredApiKey = savedApiKey.length > 0
     this.statusText = savedApiKey.length > 0 ? '已读取本地保存的 API Key，可直接修改后重新保存。' : ''
-    this.statusColor = '#2E6BE6'
+    this.statusColor = UiColors.BRAND
   }
 
   async loadPrivacyGuardSetting(): Promise<void> {
@@ -481,12 +490,12 @@ struct SettingsPage {
     const hostContext = this.getHostContext()
     if (hostContext === undefined) {
       this.statusText = '当前页面上下文不可用，暂时无法保存 API Key'
-      this.statusColor = '#C0392B'
+      this.statusColor = UiColors.DANGER
       return
     }
     if (!this.isApiKeyFormatValid()) {
       this.statusText = this.validationMessage()
-      this.statusColor = '#C0392B'
+      this.statusColor = UiColors.DANGER
       return
     }
 
@@ -494,14 +503,14 @@ struct SettingsPage {
     this.apiKeyInput = this.apiKeyInput.trim()
     this.hasStoredApiKey = true
     this.statusText = 'API Key 已保存到本地设备。'
-    this.statusColor = '#2A8F5B'
+    this.statusColor = UiColors.SUCCESS
   }
 
   async clearApiKey(): Promise<void> {
     const hostContext = this.getHostContext()
     if (hostContext === undefined) {
       this.statusText = '当前页面上下文不可用，暂时无法清空 API Key'
-      this.statusColor = '#C0392B'
+      this.statusColor = UiColors.DANGER
       return
     }
 
@@ -509,35 +518,35 @@ struct SettingsPage {
     this.apiKeyInput = ''
     this.hasStoredApiKey = false
     this.statusText = '已清空本地 API Key。'
-    this.statusColor = '#2E6BE6'
+    this.statusColor = UiColors.BRAND
   }
 
   async saveServiceBaseUrl(): Promise<void> {
     const hostContext = this.getHostContext()
     if (hostContext === undefined) {
       this.serviceBaseUrlStatusText = '当前页面上下文不可用，暂时无法保存服务地址'
-      this.serviceBaseUrlStatusColor = '#C0392B'
+      this.serviceBaseUrlStatusColor = UiColors.DANGER
       return
     }
 
     const normalizedBaseUrl = this.serviceBaseUrlInput.trim()
     if (normalizedBaseUrl.length === 0) {
       this.serviceBaseUrlStatusText = '服务地址不能为空。'
-      this.serviceBaseUrlStatusColor = '#C0392B'
+      this.serviceBaseUrlStatusColor = UiColors.DANGER
       return
     }
 
     await this.userSettingsService.saveServiceBaseUrl(hostContext, normalizedBaseUrl)
     this.serviceBaseUrlInput = normalizedBaseUrl
     this.serviceBaseUrlStatusText = '服务地址已保存，导入页会自动使用该地址。'
-    this.serviceBaseUrlStatusColor = '#2A8F5B'
+    this.serviceBaseUrlStatusColor = UiColors.SUCCESS
   }
 
   async clearServiceBaseUrl(): Promise<void> {
     const hostContext = this.getHostContext()
     if (hostContext === undefined) {
       this.serviceBaseUrlStatusText = '当前页面上下文不可用，暂时无法恢复默认地址'
-      this.serviceBaseUrlStatusColor = '#C0392B'
+      this.serviceBaseUrlStatusColor = UiColors.DANGER
       return
     }
 
@@ -547,7 +556,7 @@ struct SettingsPage {
     this.serviceBaseUrlStatusText = isEmulatorRuntime()
       ? `已恢复模拟器自动联网地址（http://${DEV_HOST_LAN_IP}:3000）。`
       : '已恢复默认服务地址。'
-    this.serviceBaseUrlStatusColor = '#2E6BE6'
+    this.serviceBaseUrlStatusColor = UiColors.BRAND
   }
 
   async probeServiceBaseUrl(): Promise<void> {
@@ -556,17 +565,17 @@ struct SettingsPage {
     }
     this.isProbingService = true
     this.serviceBaseUrlStatusText = '正在检测服务连通性...'
-    this.serviceBaseUrlStatusColor = '#2E6BE6'
+    this.serviceBaseUrlStatusColor = UiColors.BRAND
     try {
       const probeResult = await this.serviceHealthProbe.findReachableBaseUrl(this.serviceBaseUrlInput)
       if (!probeResult.ok) {
         this.serviceBaseUrlStatusText = probeResult.message
-        this.serviceBaseUrlStatusColor = '#C0392B'
+        this.serviceBaseUrlStatusColor = UiColors.DANGER
         return
       }
       this.serviceBaseUrlInput = probeResult.baseUrl
       this.serviceBaseUrlStatusText = probeResult.message
-      this.serviceBaseUrlStatusColor = '#2A8F5B'
+      this.serviceBaseUrlStatusColor = UiColors.SUCCESS
       const hostContext = this.getHostContext()
       if (hostContext !== undefined) {
         await this.userSettingsService.saveServiceBaseUrl(hostContext, probeResult.baseUrl)

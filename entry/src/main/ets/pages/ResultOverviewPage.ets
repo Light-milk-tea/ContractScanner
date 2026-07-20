@@ -4,7 +4,7 @@ import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
 import { logError, logInfo } from '../common/logger'
 import { isCompactLayout } from '../common/ui/LayoutHelpers'
-import { UiColors, UiFont, UiRadius, UiShadow, UiSpace } from '../common/ui/DesignTokens'
+import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
 import { GhostButton, PrimaryButton } from '../components/ActionButtons'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
@@ -35,6 +35,7 @@ struct ResultOverviewPage {
   @State currentResult?: AnalysisResult = undefined
   @State isUsingDemoResult: boolean = false
   @State privacyGuardEnabled: boolean = false
+  @State resultContentOpacity: number = 0
 
   resultVM: ResultVM = new ResultVM()
   cacheService: CacheService = new CacheService()
@@ -44,6 +45,13 @@ struct ResultOverviewPage {
 
   aboutToAppear(): void {
     this.loadResult()
+  }
+
+  playResultEntrance(): void {
+    this.resultContentOpacity = 0
+    this.getUIContext().animateTo({ duration: 280, curve: Curve.EaseOut }, () => {
+      this.resultContentOpacity = 1
+    })
   }
 
   onPageShow(): void {
@@ -111,79 +119,91 @@ struct ResultOverviewPage {
               .width('100%')
           }
 
-          SummaryCard({
-            contractName: this.currentResult.contractName,
-            overallSummary: this.currentResult.overallSummary,
-            generatedAt: this.currentResult.generatedAt,
-            checklist: this.currentResult.signBeforeChecklist,
-            redCount: this.currentResult.riskStats.red,
-            yellowCount: this.currentResult.riskStats.yellow,
-            greenCount: this.currentResult.riskStats.green
-          })
+          Column() {
+            SummaryCard({
+              contractName: this.currentResult.contractName,
+              overallSummary: this.currentResult.overallSummary,
+              generatedAt: this.currentResult.generatedAt,
+              checklist: this.currentResult.signBeforeChecklist,
+              redCount: this.currentResult.riskStats.red,
+              yellowCount: this.currentResult.riskStats.yellow,
+              greenCount: this.currentResult.riskStats.green
+            })
+          }
+          .width('100%')
+          .opacity(this.resultContentOpacity)
 
           Column({ space: UiSpace.MD }) {
             SectionHeader({
               title: '风险条目',
-              description: '点击条目查看原文、白话解释与修改建议。'
+              description: '点击条目查看原文、白话解释与修改建议。',
+              alignCenter: false
             })
 
-            ForEach(this.currentResult.clauses, (clause: ClauseRisk) => {
-              Row({ space: UiSpace.MD }) {
-                Column()
-                  .width(3)
-                  .height(36)
-                  .borderRadius(UiRadius.PILL)
-                  .backgroundColor(this.riskBarColor(clause.riskLevel))
+            Column() {
+              ForEach(this.currentResult.clauses, (clause: ClauseRisk, index: number) => {
+                Column() {
+                  if (index > 0) {
+                    Divider()
+                      .color(UiColors.BORDER_HAIRLINE)
+                      .strokeWidth(0.5)
+                      .margin({ left: UiSpace.LG + 3 + UiSpace.MD })
+                  }
+                  Row({ space: UiSpace.MD }) {
+                    Column()
+                      .width(3)
+                      .height(32)
+                      .borderRadius(1)
+                      .backgroundColor(this.riskBarColor(clause.riskLevel))
 
-                Column({ space: UiSpace.SM }) {
-                  Row({ space: UiSpace.SM }) {
-                    Text(clause.title)
-                      .fontSize(UiFont.BODY)
-                      .fontWeight(FontWeight.Medium)
-                      .fontColor(UiColors.TEXT_PRIMARY)
-                      .layoutWeight(1)
-                      .maxLines(2)
-                      .textOverflow({ overflow: TextOverflow.Ellipsis })
-                    RiskBadge({ riskLevel: clause.riskLevel })
+                    Column({ space: UiSpace.SM }) {
+                      Row({ space: UiSpace.SM }) {
+                        Text(clause.title)
+                          .fontSize(UiFont.BODY)
+                          .fontWeight(FontWeight.Medium)
+                          .fontColor(UiColors.TEXT_PRIMARY)
+                          .layoutWeight(1)
+                          .maxLines(2)
+                          .textOverflow({ overflow: TextOverflow.Ellipsis })
+                        RiskBadge({ riskLevel: clause.riskLevel })
+                      }
+                      .width('100%')
+
+                      Text(clause.riskReason)
+                        .fontSize(UiFont.BODY_SMALL)
+                        .fontColor(UiColors.TEXT_SECONDARY)
+                        .maxLines(3)
+                        .lineHeight(22)
+
+                      Text('查看对照阅读 ›')
+                        .fontSize(UiFont.CAPTION)
+                        .fontColor(UiColors.BRAND)
+                    }
+                    .alignItems(HorizontalAlign.Start)
+                    .layoutWeight(1)
                   }
                   .width('100%')
-
-                  Text(clause.riskReason)
-                    .fontSize(UiFont.BODY_SMALL)
-                    .fontColor(UiColors.TEXT_SECONDARY)
-                    .maxLines(3)
-                    .lineHeight(22)
-
-                  Text('查看对照阅读 ›')
-                    .fontSize(UiFont.CAPTION)
-                    .fontColor(UiColors.BRAND)
+                  .alignItems(VerticalAlign.Top)
+                  .padding({
+                    left: UiSpace.LG,
+                    right: UiSpace.LG,
+                    top: UiSpace.LG,
+                    bottom: UiSpace.LG
+                  })
+                  .onClick(() => {
+                    this.openClauseCompare(clause.clauseId)
+                  })
                 }
-                .alignItems(HorizontalAlign.Start)
-                .layoutWeight(1)
-              }
-              .width('100%')
-              .alignItems(VerticalAlign.Top)
-              .padding({
-                left: UiSpace.LG,
-                right: UiSpace.LG,
-                top: UiSpace.LG,
-                bottom: UiSpace.LG
+                .width('100%')
               })
-              .backgroundColor(UiColors.SURFACE_PRIMARY)
-              .borderRadius(UiRadius.LARGE)
-              .shadow({
-                radius: UiShadow.SOFT_RADIUS,
-                color: UiShadow.SOFT_COLOR,
-                offsetX: 0,
-                offsetY: 4
-              })
-              .onClick(() => {
-                this.openClauseCompare(clause.clauseId)
-              })
-            })
+            }
+            .width('100%')
+            .backgroundColor(UiColors.SURFACE_MUTED)
+            .borderRadius(UiRadius.LARGE)
           }
           .alignItems(HorizontalAlign.Start)
           .width('100%')
+          .opacity(this.resultContentOpacity)
         }
         }
         .alignItems(HorizontalAlign.Start)
@@ -243,6 +263,9 @@ struct ResultOverviewPage {
       this.isLoading = false
       this.resultVM.setLoading(false)
       this.renderTick = this.renderTick + 1
+      if (this.currentResult !== undefined) {
+        this.playResultEntrance()
+      }
     }
   }
 
@@ -257,6 +280,7 @@ struct ResultOverviewPage {
     this.isUsingDemoResult = true
     this.errorText = '当前展示的是临时演示结果，真实结果仍可稍后重试拉取。'
     logInfo(`Fallback to demo result: taskId=${demoResult.taskId}`, 'ResultOverviewPage')
+    this.playResultEntrance()
   }
 
   async openClauseCompare(clauseId: string): Promise<void> {

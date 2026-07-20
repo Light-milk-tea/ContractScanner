@@ -6,7 +6,7 @@ import {
   isCompactLayout,
   metricValueFontSize
 } from '../common/ui/LayoutHelpers'
-import { UiColors, UiFont, UiRadius, UiShadow, UiSpace } from '../common/ui/DesignTokens'
+import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
 
 @Component
 export struct SummaryCard {
@@ -24,7 +24,6 @@ export struct SummaryCard {
         .fontSize(UiFont.CAPTION)
         .fontColor(UiColors.BRAND)
         .fontWeight(FontWeight.Medium)
-        .textAlign(TextAlign.Center)
         .width('100%')
 
       Text(this.contractName)
@@ -33,7 +32,7 @@ export struct SummaryCard {
         .fontColor(UiColors.TEXT_PRIMARY)
         .maxLines(2)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .textAlign(TextAlign.Center)
+        .textAlign(TextAlign.Start)
         .width('100%')
 
       Text(this.overallSummary)
@@ -42,13 +41,12 @@ export struct SummaryCard {
         .lineHeight(bodyLineHeight())
         .width('100%')
 
-      Row() {
-        this.metricInline('高风险', `${this.redCount}`, UiColors.DANGER)
-        this.metricInline('中风险', `${this.yellowCount}`, UiColors.WARNING)
-        this.metricInline('低风险', `${this.greenCount}`, UiColors.SUCCESS)
+      Row({ space: UiSpace.SM }) {
+        this.metricBlock('高风险', `${this.redCount}`, UiColors.DANGER, UiColors.DANGER_SOFT)
+        this.metricBlock('中风险', `${this.yellowCount}`, UiColors.WARNING, UiColors.WARNING_SOFT)
+        this.metricBlock('低风险', `${this.greenCount}`, UiColors.SUCCESS, UiColors.SUCCESS_SOFT)
       }
       .width('100%')
-      .justifyContent(FlexAlign.SpaceAround)
 
       if (this.checklist.length > 0) {
         Column({ space: UiSpace.MD }) {
@@ -59,9 +57,12 @@ export struct SummaryCard {
             .width('100%')
           ForEach(this.checklist, (item: string) => {
             Row({ space: UiSpace.SM }) {
-              Text('–')
-                .fontSize(UiFont.BODY_SMALL)
-                .fontColor(UiColors.TEXT_TERTIARY)
+              Column()
+                .width(4)
+                .height(4)
+                .borderRadius(1)
+                .backgroundColor(UiColors.BRAND)
+                .margin({ top: 8 })
               Text(item)
                 .fontSize(UiFont.BODY_SMALL)
                 .fontColor(UiColors.TEXT_SECONDARY)
@@ -76,24 +77,19 @@ export struct SummaryCard {
         .width('100%')
       }
 
-      Text(this.formatGeneratedAt())
-        .fontSize(UiFont.CAPTION)
-        .fontColor(UiColors.TEXT_TERTIARY)
-        .maxLines(1)
-        .textAlign(TextAlign.Center)
-        .width('100%')
+      if (this.formatGeneratedAt().length > 0) {
+        Text(this.formatGeneratedAt())
+          .fontSize(UiFont.CAPTION)
+          .fontColor(UiColors.TEXT_TERTIARY)
+          .maxLines(1)
+          .width('100%')
+      }
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .padding(cardPadding() + 4)
-    .borderRadius(isCompactLayout() ? UiRadius.LARGE : UiRadius.XLARGE)
-    .backgroundColor(UiColors.SURFACE_PRIMARY)
-    .shadow({
-      radius: UiShadow.SOFT_RADIUS,
-      color: UiShadow.SOFT_COLOR,
-      offsetX: 0,
-      offsetY: 4
-    })
+    .padding(cardPadding())
+    .borderRadius(UiRadius.LARGE)
+    .backgroundColor(UiColors.SURFACE_MUTED)
   }
 
   formatGeneratedAt(): string {
@@ -107,7 +103,7 @@ export struct SummaryCard {
   }
 
   @Builder
-  metricInline(label: string, value: string, color: string) {
+  metricBlock(label: string, value: string, color: string, softColor: string) {
     Column({ space: 4 }) {
       Text(value)
         .fontSize(metricValueFontSize())
@@ -117,7 +113,15 @@ export struct SummaryCard {
         .fontSize(UiFont.CAPTION)
         .fontColor(UiColors.TEXT_TERTIARY)
     }
-    .alignItems(HorizontalAlign.Center)
+    .alignItems(HorizontalAlign.Start)
     .layoutWeight(1)
+    .padding({
+      left: UiSpace.MD,
+      right: UiSpace.MD,
+      top: UiSpace.MD,
+      bottom: UiSpace.MD
+    })
+    .backgroundColor(softColor)
+    .borderRadius(UiRadius.MEDIUM)
   }
 }

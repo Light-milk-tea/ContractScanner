@@ -1,4 +1,4 @@
-import { LayoutMetrics, UiColors, UiShadow } from '../common/ui/DesignTokens'
+import { LayoutMetrics, UiColors, UiFont, UiRadius } from '../common/ui/DesignTokens'
 
 @Component
 export struct PrimaryButton {
@@ -11,25 +11,15 @@ export struct PrimaryButton {
   build() {
     if (this.fillWidth) {
       Button(this.label)
-        .type(ButtonType.Capsule)
+        .type(ButtonType.Normal)
         .height(LayoutMetrics.BUTTON_HEIGHT)
         .width('100%')
-        .fontSize(15)
+        .borderRadius(LayoutMetrics.BUTTON_RADIUS)
+        .fontSize(UiFont.BUTTON)
         .fontWeight(FontWeight.Medium)
         .backgroundColor(this.isEnabled ? UiColors.BRAND : UiColors.SURFACE_SECONDARY)
         .fontColor(this.isEnabled ? UiColors.TEXT_ON_BRAND : UiColors.TEXT_TERTIARY)
         .enabled(this.isEnabled)
-        .shadow(this.isEnabled ? {
-          radius: UiShadow.SOFT_RADIUS,
-          color: '#332E6BE6',
-          offsetX: 0,
-          offsetY: 4
-        } : {
-          radius: 0,
-          color: '#00000000',
-          offsetX: 0,
-          offsetY: 0
-        })
         .onClick(() => {
           if (this.isEnabled) {
             this.onTap()
@@ -37,24 +27,14 @@ export struct PrimaryButton {
         })
     } else {
       Button(this.label)
-        .type(ButtonType.Capsule)
+        .type(ButtonType.Normal)
         .height(LayoutMetrics.BUTTON_HEIGHT)
-        .fontSize(15)
+        .borderRadius(LayoutMetrics.BUTTON_RADIUS)
+        .fontSize(UiFont.BUTTON)
         .fontWeight(FontWeight.Medium)
         .backgroundColor(this.isEnabled ? UiColors.BRAND : UiColors.SURFACE_SECONDARY)
         .fontColor(this.isEnabled ? UiColors.TEXT_ON_BRAND : UiColors.TEXT_TERTIARY)
         .enabled(this.isEnabled)
-        .shadow(this.isEnabled ? {
-          radius: UiShadow.SOFT_RADIUS,
-          color: '#332E6BE6',
-          offsetX: 0,
-          offsetY: 4
-        } : {
-          radius: 0,
-          color: '#00000000',
-          offsetX: 0,
-          offsetY: 0
-        })
         .onClick(() => {
           if (this.isEnabled) {
             this.onTap()
@@ -75,13 +55,18 @@ export struct GhostButton {
   build() {
     if (this.fillWidth) {
       Button(this.label)
-        .type(ButtonType.Capsule)
+        .type(ButtonType.Normal)
         .height(LayoutMetrics.BUTTON_HEIGHT)
         .width('100%')
-        .fontSize(15)
+        .borderRadius(LayoutMetrics.BUTTON_RADIUS)
+        .fontSize(UiFont.BUTTON)
         .fontWeight(FontWeight.Medium)
-        .backgroundColor(UiColors.SURFACE_SECONDARY)
+        .backgroundColor(UiColors.SURFACE_MUTED)
         .fontColor(UiColors.TEXT_PRIMARY)
+        .border({
+          width: 1,
+          color: UiColors.BORDER_SOFT
+        })
         .enabled(this.isEnabled)
         .onClick(() => {
           if (this.isEnabled) {
@@ -90,12 +75,17 @@ export struct GhostButton {
         })
     } else {
       Button(this.label)
-        .type(ButtonType.Capsule)
+        .type(ButtonType.Normal)
         .height(LayoutMetrics.BUTTON_HEIGHT)
-        .fontSize(15)
+        .borderRadius(LayoutMetrics.BUTTON_RADIUS)
+        .fontSize(UiFont.BUTTON)
         .fontWeight(FontWeight.Medium)
-        .backgroundColor(UiColors.SURFACE_SECONDARY)
+        .backgroundColor(UiColors.SURFACE_MUTED)
         .fontColor(UiColors.TEXT_PRIMARY)
+        .border({
+          width: 1,
+          color: UiColors.BORDER_SOFT
+        })
         .enabled(this.isEnabled)
         .onClick(() => {
           if (this.isEnabled) {
@@ -116,8 +106,9 @@ export struct SegmentChip {
 
   build() {
     Button(this.label)
-      .type(ButtonType.Capsule)
+      .type(ButtonType.Normal)
       .height(40)
+      .borderRadius(UiRadius.MEDIUM)
       .fontSize(14)
       .fontWeight(this.selected ? FontWeight.Medium : FontWeight.Regular)
       .backgroundColor(this.selected ? UiColors.BRAND_SOFT : UiColors.SURFACE_MUTED)

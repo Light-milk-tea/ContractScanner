@@ -5,7 +5,7 @@ import {
   contractTitleFontSize,
   isCompactLayout
 } from '../common/ui/LayoutHelpers'
-import { LayoutMetrics, UiColors, UiFont, UiSpace } from '../common/ui/DesignTokens'
+import { LayoutMetrics, UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
 import { RiskBadge } from './RiskBadge'
 
 @Component
@@ -24,7 +24,7 @@ export struct ClauseBlock {
         Column()
           .width(LayoutMetrics.RISK_BAR_WIDTH)
           .height(isCompactLayout() ? 36 : 42)
-          .borderRadius(999)
+          .borderRadius(1)
           .backgroundColor(this.riskBarColor())
 
         Column({ space: UiSpace.XS }) {
@@ -48,12 +48,12 @@ export struct ClauseBlock {
       .width('100%')
       .alignItems(VerticalAlign.Top)
 
-      this.buildSection('原文条款', this.originalText, UiColors.TEXT_PRIMARY)
-      this.buildSection('白话解释', this.plainText, UiColors.TEXT_SECONDARY)
-      this.buildSection('风险原因', this.riskReason, UiColors.TEXT_PRIMARY)
+      this.buildPlainSection('原文条款', this.originalText, UiColors.TEXT_PRIMARY)
+      this.buildAccentSection('白话解释', this.plainText)
+      this.buildPlainSection('风险原因', this.riskReason, UiColors.TEXT_PRIMARY)
 
       if (this.suggestion.length > 0) {
-        this.buildSection('修改建议', this.suggestion, UiColors.BRAND_STRONG)
+        this.buildPlainSection('修改建议', this.suggestion, UiColors.BRAND_STRONG)
       }
     }
     .alignItems(HorizontalAlign.Start)
@@ -71,7 +71,7 @@ export struct ClauseBlock {
   }
 
   @Builder
-  buildSection(title: string, content: string, textColor: string) {
+  buildPlainSection(title: string, content: string, textColor: string) {
     Column({ space: UiSpace.SM }) {
       Divider()
         .color(UiColors.BORDER_HAIRLINE)
@@ -89,6 +89,31 @@ export struct ClauseBlock {
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
+  }
+
+  @Builder
+  buildAccentSection(title: string, content: string) {
+    Column({ space: UiSpace.SM }) {
+      Text(title)
+        .fontSize(UiFont.CAPTION)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(UiColors.BRAND)
+      Text(this.indentParagraph(content))
+        .fontSize(UiFont.BODY)
+        .fontColor(UiColors.TEXT_PRIMARY)
+        .lineHeight(bodyLineHeight())
+        .width('100%')
+    }
+    .alignItems(HorizontalAlign.Start)
+    .width('100%')
+    .padding({
+      left: UiSpace.LG,
+      right: UiSpace.LG,
+      top: UiSpace.LG,
+      bottom: UiSpace.LG
+    })
+    .backgroundColor(UiColors.SURFACE_ACCENT)
+    .borderRadius(UiRadius.MEDIUM)
   }
 
   /** 正文首行空两格（全角空格），阅读更舒适 */

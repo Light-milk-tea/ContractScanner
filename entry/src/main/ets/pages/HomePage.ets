@@ -4,12 +4,13 @@ import { API_BASE_URL } from '../common/constants'
 import { logError } from '../common/logger'
 import {
   contentMaxWidth,
+  heroFontSize,
   isCompactLayout,
   pageHorizontalPadding,
   pageVerticalPadding,
   sectionGap
 } from '../common/ui/LayoutHelpers'
-import { LayoutMetrics, UiColors, UiFont, UiRadius, UiShadow, UiSpace } from '../common/ui/DesignTokens'
+import { LayoutMetrics, UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
 import { GhostButton, PrimaryButton } from '../components/ActionButtons'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
@@ -28,22 +29,46 @@ struct HomePage {
   @State recentErrorText: string = ''
   @State isLoadingRecentContracts: boolean = false
   @State isRecentExpanded: boolean = false
+  @State heroOpacity: number = 0
+  @State heroOffsetY: number = 16
+  @State ctaOpacity: number = 0
+  @State ctaOffsetY: number = 12
 
   homeVM: HomeVM = new HomeVM()
   cacheService: CacheService = new CacheService()
 
   aboutToAppear(): void {
     this.loadRecentContracts()
+    this.playHeroEntrance()
   }
 
   onPageShow(): void {
     this.loadRecentContracts()
   }
 
+  playHeroEntrance(): void {
+    this.heroOpacity = 0
+    this.heroOffsetY = 16
+    this.ctaOpacity = 0
+    this.ctaOffsetY = 12
+
+    this.getUIContext().animateTo({ duration: 320, curve: Curve.EaseOut }, () => {
+      this.heroOpacity = 1
+      this.heroOffsetY = 0
+    })
+
+    setTimeout(() => {
+      this.getUIContext().animateTo({ duration: 280, curve: Curve.EaseOut }, () => {
+        this.ctaOpacity = 1
+        this.ctaOffsetY = 0
+      })
+    }, 120)
+  }
+
   build() {
     Scroll() {
       Column({ space: sectionGap() }) {
-        Column({ space: UiSpace.XL }) {
+        Column({ space: UiSpace.XXL }) {
           Row() {
             Blank()
             Text('设置')
@@ -56,51 +81,60 @@ struct HomePage {
           }
           .width('100%')
 
-          Column({ space: UiSpace.LG }) {
+          Column({ space: UiSpace.MD }) {
             Column({ space: UiSpace.SM }) {
               Text('法言白话')
-                .fontSize(isCompactLayout() ? 36 : 42)
+                .fontSize(heroFontSize())
                 .fontWeight(FontWeight.Bold)
                 .fontColor(UiColors.TEXT_PRIMARY)
-                .letterSpacing(4)
+                .letterSpacing(6)
                 .textAlign(TextAlign.Center)
                 .width('100%')
 
               Row()
-                .width(36)
+                .width(32)
                 .height(3)
-                .borderRadius(UiRadius.PILL)
+                .borderRadius(1)
                 .backgroundColor(UiColors.BRAND)
+                .margin({ top: 2 })
             }
             .alignItems(HorizontalAlign.Center)
             .width('100%')
 
-            Text('导入  ·  分析  ·  解读')
-              .fontSize(UiFont.BODY_SMALL)
-              .fontColor(UiColors.TEXT_TERTIARY)
+            Text('把合同读成人话')
+              .fontSize(isCompactLayout() ? UiFont.BODY : UiFont.SECTION_TITLE)
+              .fontColor(UiColors.TEXT_SECONDARY)
               .letterSpacing(1)
               .textAlign(TextAlign.Center)
               .width('100%')
           }
           .alignItems(HorizontalAlign.Center)
           .width('100%')
-          .padding({ top: UiSpace.MD, bottom: UiSpace.SM })
+          .padding({ top: UiSpace.LG, bottom: UiSpace.SM })
+          .opacity(this.heroOpacity)
+          .translate({ y: this.heroOffsetY })
 
-          PrimaryButton({
-            label: '导入合同',
-            fillWidth: true,
-            onTap: () => {
-              goImport(this.getUIContext())
-            }
-          })
+          Column() {
+            PrimaryButton({
+              label: '导入合同',
+              fillWidth: true,
+              onTap: () => {
+                goImport(this.getUIContext())
+              }
+            })
+          }
+          .width('100%')
+          .opacity(this.ctaOpacity)
+          .translate({ y: this.ctaOffsetY })
         }
-        .alignItems(HorizontalAlign.Center)
+        .alignItems(HorizontalAlign.Start)
         .width('100%')
 
         Column({ space: UiSpace.LG }) {
           SectionHeader({
             title: '最近记录',
-            description: '本地保留最近 5 条结果，便于快速回看。'
+            description: '本地保留最近 5 条结果，便于快速回看。',
+            alignCenter: false
           })
 
           if (this.isLoadingRecentContracts) {
@@ -134,54 +168,60 @@ struct HomePage {
             .width('100%')
           } else if (this.recentContracts.length > 0) {
             Column({ space: UiSpace.SM }) {
-              ForEach(this.visibleRecentContracts(), (contract: Contract) => {
-                Row({ space: UiSpace.MD }) {
-                  Column()
-                    .width(LayoutMetrics.RISK_BAR_WIDTH)
-                    .height(32)
-                    .borderRadius(UiRadius.PILL)
-                    .backgroundColor(this.statusBarColor(contract.status))
+              Column() {
+                ForEach(this.visibleRecentContracts(), (contract: Contract, index: number) => {
+                  Column() {
+                    if (index > 0) {
+                      Divider()
+                        .color(UiColors.BORDER_HAIRLINE)
+                        .strokeWidth(0.5)
+                        .margin({ left: UiSpace.LG + LayoutMetrics.RISK_BAR_WIDTH + UiSpace.MD })
+                    }
+                    Row({ space: UiSpace.MD }) {
+                      Column()
+                        .width(LayoutMetrics.RISK_BAR_WIDTH)
+                        .height(28)
+                        .borderRadius(1)
+                        .backgroundColor(this.statusBarColor(contract.status))
 
-                  Column({ space: 4 }) {
-                    Text(contract.contractName)
-                      .fontSize(UiFont.BODY)
-                      .fontWeight(FontWeight.Medium)
-                      .fontColor(UiColors.TEXT_PRIMARY)
-                      .maxLines(1)
-                      .textOverflow({ overflow: TextOverflow.Ellipsis })
-                      .width('100%')
-                    Text(`${this.formatCreatedAt(contract.createdAt)}  ·  ${this.statusLabel(contract.status)}`)
-                      .fontSize(UiFont.CAPTION)
-                      .fontColor(UiColors.TEXT_TERTIARY)
-                      .maxLines(1)
+                      Column({ space: 4 }) {
+                        Text(contract.contractName)
+                          .fontSize(UiFont.BODY)
+                          .fontWeight(FontWeight.Medium)
+                          .fontColor(UiColors.TEXT_PRIMARY)
+                          .maxLines(1)
+                          .textOverflow({ overflow: TextOverflow.Ellipsis })
+                          .width('100%')
+                        Text(`${this.formatCreatedAt(contract.createdAt)}  ·  ${this.statusLabel(contract.status)}`)
+                          .fontSize(UiFont.CAPTION)
+                          .fontColor(UiColors.TEXT_TERTIARY)
+                          .maxLines(1)
+                      }
+                      .alignItems(HorizontalAlign.Start)
+                      .layoutWeight(1)
+
+                      Text('›')
+                        .fontSize(18)
+                        .fontColor(UiColors.TEXT_TERTIARY)
+                    }
+                    .width('100%')
+                    .alignItems(VerticalAlign.Center)
+                    .padding({
+                      left: UiSpace.LG,
+                      right: UiSpace.LG,
+                      top: UiSpace.LG,
+                      bottom: UiSpace.LG
+                    })
+                    .onClick(() => {
+                      this.openRecentContract(contract)
+                    })
                   }
-                  .alignItems(HorizontalAlign.Start)
-                  .layoutWeight(1)
-
-                  Text('›')
-                    .fontSize(20)
-                    .fontColor(UiColors.TEXT_TERTIARY)
-                }
-                .width('100%')
-                .alignItems(VerticalAlign.Center)
-                .padding({
-                  left: UiSpace.LG,
-                  right: UiSpace.LG,
-                  top: UiSpace.LG,
-                  bottom: UiSpace.LG
-                })
-                .backgroundColor(UiColors.SURFACE_PRIMARY)
-                .borderRadius(UiRadius.LARGE)
-                .shadow({
-                  radius: UiShadow.SOFT_RADIUS,
-                  color: UiShadow.SOFT_COLOR,
-                  offsetX: 0,
-                  offsetY: 4
-                })
-                .onClick(() => {
-                  this.openRecentContract(contract)
-                })
-              }, (contract: Contract) => contract.taskId)
+                  .width('100%')
+                }, (contract: Contract) => contract.taskId)
+              }
+              .width('100%')
+              .backgroundColor(UiColors.SURFACE_MUTED)
+              .borderRadius(UiRadius.LARGE)
 
               if (this.shouldShowRecentToggle()) {
                 GhostButton({
@@ -245,7 +285,6 @@ struct HomePage {
     if (createdAt === undefined || createdAt.length === 0) {
       return '生成时间待更新'
     }
-    // 手机端缩短 ISO 时间，避免挤占文件名
     if (isCompactLayout() && createdAt.indexOf('T') > 0) {
       return createdAt.replace('T', ' ').substring(0, 19)
     }
@@ -338,12 +377,12 @@ struct HomePage {
       case AnalyzeStatus.FAILED:
         return UiColors.DANGER
       case AnalyzeStatus.SUCCESS:
-        return UiColors.SUCCESS
+        return UiColors.BRAND
       case AnalyzeStatus.LLM_RUNNING:
       case AnalyzeStatus.OCR_RUNNING:
-        return UiColors.BRAND
+        return UiColors.BRAND_STRONG
       default:
-        return UiColors.TEXT_TERTIARY
+        return UiColors.BRAND_SOFT
     }
   }
 }

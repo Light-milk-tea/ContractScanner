@@ -63,8 +63,8 @@ export struct AnalyzeProgress {
           .linearGradient({
             angle: 145,
             colors: [
-              ['#A8C8FF', 0.0],
-              ['#66D6E8FF', 0.45],
+              ['#E8A8A4', 0.0],
+              ['#66B91C1C', 0.45],
               ['#00FFFFFF', 1.0]
             ]
           })

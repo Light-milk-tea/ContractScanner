@@ -6,8 +6,8 @@ export struct SectionHeader {
   @Prop title: string = ''
   @Prop description: string = ''
   @Prop badgeText: string = ''
-  /** 默认居中，更适合手机页眉节奏 */
-  @Prop alignCenter: boolean = true
+  /** 默认左对齐，贴合墨纸文书编辑排版 */
+  @Prop alignCenter: boolean = false
 
   build() {
     Column({ space: UiSpace.XS }) {

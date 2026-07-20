@@ -4,7 +4,7 @@ import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
 import { logError, logInfo } from '../common/logger'
 import { readingMaxWidth } from '../common/ui/LayoutHelpers'
-import { UiColors, UiFont, UiSpace } from '../common/ui/DesignTokens'
+import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
 import { GhostButton, PrimaryButton } from '../components/ActionButtons'
 import { ClauseBlock } from '../components/ClauseBlock'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
@@ -111,6 +111,14 @@ struct ClauseComparePage {
           }
           .width('100%')
           .constraintSize({ maxWidth: readingMaxWidth() })
+          .padding({
+            left: UiSpace.LG,
+            right: UiSpace.LG,
+            top: UiSpace.LG,
+            bottom: UiSpace.LG
+          })
+          .backgroundColor(UiColors.SURFACE_MUTED)
+          .borderRadius(UiRadius.LARGE)
         }
         }
         .alignItems(HorizontalAlign.Start)

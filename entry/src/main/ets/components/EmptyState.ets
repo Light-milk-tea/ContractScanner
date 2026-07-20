@@ -1,4 +1,4 @@
-import { UiColors, UiFont, UiSpace } from '../common/ui/DesignTokens'
+import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
 
 export enum EmptyStateType {
   EMPTY = 'empty',
@@ -15,10 +15,15 @@ export struct EmptyState {
 
   build() {
     Column({ space: UiSpace.MD }) {
-      Text(this.iconGlyph())
-        .fontSize(22)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(this.badgeFontColor())
+      Row() {
+        Column()
+          .width(this.glyphWidth())
+          .height(14)
+          .borderRadius(UiRadius.SMALL)
+          .backgroundColor(this.badgeFontColor())
+      }
+      .width('100%')
+      .justifyContent(FlexAlign.Start)
 
       Text(this.title)
         .fontSize(UiFont.SECTION_TITLE)
@@ -46,14 +51,14 @@ export struct EmptyState {
     .padding({ top: UiSpace.LG, bottom: UiSpace.LG })
   }
 
-  iconGlyph(): string {
+  glyphWidth(): number {
     switch (this.stateType) {
       case EmptyStateType.ERROR:
-        return '!'
+        return 18
       case EmptyStateType.INFO:
-        return 'i'
+        return 28
       default:
-        return '·'
+        return 10
     }
   }
 
@@ -64,7 +69,7 @@ export struct EmptyState {
       case EmptyStateType.INFO:
         return UiColors.BRAND
       default:
-        return UiColors.TEXT_SECONDARY
+        return UiColors.TEXT_TERTIARY
     }
   }
 }

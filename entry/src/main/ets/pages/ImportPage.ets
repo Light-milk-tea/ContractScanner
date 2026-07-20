@@ -42,13 +42,13 @@ struct ImportPage {
   @State isSubmitting: boolean = false
   @State canContinueDemo: boolean = false
   @State apiKeyNoticeText: string = '正在检查本地 API Key 配置...'
-  @State apiKeyNoticeColor: string = '#666666'
+  @State apiKeyNoticeColor: string = UiColors.TEXT_SECONDARY
   @State baseUrlNoticeText: string = '当前使用默认服务地址。'
-  @State baseUrlNoticeColor: string = '#666666'
+  @State baseUrlNoticeColor: string = UiColors.TEXT_SECONDARY
   @State selectedDemoPreset: DemoSamplePreset = DemoSamplePreset.NONE
   @State demoFaultMode: DemoFaultMode = DemoFaultMode.NONE
   @State demoModeNoticeText: string = '当前未启用异常演示模式。'
-  @State demoModeNoticeColor: string = '#666666'
+  @State demoModeNoticeColor: string = UiColors.TEXT_SECONDARY
 
   fileImportService: FileImportService = new FileImportService()
   serviceHealthProbe: ServiceHealthProbe = new ServiceHealthProbe()
@@ -70,11 +70,12 @@ struct ImportPage {
         }
       }) {
         Column({ space: isCompactLayout() ? UiSpace.MD : UiSpace.LG }) {
-        SurfaceCard() {
+        SurfaceCard({ tone: 'soft' }) {
           Column({ space: UiSpace.MD }) {
             SectionHeader({
               title: '导入方式',
-              description: '选择合同来源后继续选择文件。'
+              description: '选择合同来源后继续选择文件。',
+              alignCenter: false
             })
             Flex({
               wrap: FlexWrap.Wrap,
@@ -123,11 +124,12 @@ struct ImportPage {
           .width('100%')
         }
 
-        SurfaceCard() {
+        SurfaceCard({ tone: 'soft' }) {
           Column({ space: UiSpace.MD }) {
             SectionHeader({
               title: '选择文件',
-              description: '支持常见合同格式；也可直接使用演示样例。'
+              description: '支持常见合同格式；也可直接使用演示样例。',
+              alignCenter: false
             })
 
             PrimaryButton({
@@ -376,7 +378,7 @@ struct ImportPage {
 
   async ensureReachableServiceBaseUrl(): Promise<boolean> {
     this.baseUrlNoticeText = '正在自动检测可用服务地址...'
-    this.baseUrlNoticeColor = '#666666'
+    this.baseUrlNoticeColor = UiColors.TEXT_SECONDARY
     const probeResult = await this.serviceHealthProbe.findReachableBaseUrl(this.baseUrl)
     if (!probeResult.ok) {
       this.errorText = probeResult.message
@@ -612,7 +614,7 @@ struct ImportPage {
         this.baseUrlNoticeText = isEmulatorRuntime()
           ? '当前使用模拟器自动联网地址；提交时会探测局域网 IP / 10.0.2.2。'
           : '当前使用默认服务地址。'
-        this.baseUrlNoticeColor = '#666666'
+        this.baseUrlNoticeColor = UiColors.TEXT_SECONDARY
       } else {
         this.baseUrlNoticeText = '已自动回填最近一次真实分析成功的服务地址，可直接开始分析。'
         this.baseUrlNoticeColor = '#2A8F5B'
@@ -694,11 +696,11 @@ struct ImportPage {
     }
     if (this.demoFaultMode === DemoFaultMode.DEGRADE_TO_DEMO) {
       this.demoModeNoticeText = '当前已开启降级展示模式：提交后会直接进入本地演示结果。'
-      this.demoModeNoticeColor = '#2E6BE6'
+      this.demoModeNoticeColor = UiColors.BRAND
       return
     }
     this.demoModeNoticeText = '当前未启用异常演示模式。'
-    this.demoModeNoticeColor = '#666666'
+    this.demoModeNoticeColor = UiColors.TEXT_SECONDARY
   }
 
   demoSampleHint(): string {

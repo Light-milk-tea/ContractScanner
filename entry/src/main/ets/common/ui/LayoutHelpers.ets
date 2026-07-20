@@ -51,11 +51,11 @@ export function sectionGap(): number {
 }
 
 export function heroFontSize(): number {
-  return isCompactLayout() ? 30 : UiFont.HERO
+  return isCompactLayout() ? 36 : UiFont.HERO
 }
 
 export function pageTitleFontSize(): number {
-  return isCompactLayout() ? 24 : UiFont.PAGE_TITLE
+  return isCompactLayout() ? 22 : UiFont.PAGE_TITLE
 }
 
 export function sectionTitleFontSize(): number {

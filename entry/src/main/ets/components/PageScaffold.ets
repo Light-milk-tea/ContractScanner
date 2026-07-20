@@ -19,13 +19,13 @@ export struct PageScaffold {
 
   build() {
     Scroll() {
-      Column({ space: sectionGap() }) {
+      Column({ space: isCompactLayout() ? UiSpace.XL : sectionGap() }) {
         if (this.backText.length > 0 || this.title.length > 0) {
-          Column({ space: UiSpace.MD }) {
+          Column({ space: UiSpace.SM }) {
             if (this.backText.length > 0) {
               Row({ space: UiSpace.XS }) {
                 Text('‹')
-                  .fontSize(26)
+                  .fontSize(24)
                   .fontWeight(FontWeight.Medium)
                   .fontColor(UiColors.BRAND)
                   .onClick(() => {
@@ -49,12 +49,12 @@ export struct PageScaffold {
             }
 
             if (this.title.length > 0) {
-              Column({ space: UiSpace.SM }) {
+              Column({ space: UiSpace.XS }) {
                 Text(this.title)
                   .fontSize(pageTitleFontSize())
                   .fontWeight(FontWeight.Bold)
                   .fontColor(UiColors.TEXT_PRIMARY)
-                  .textAlign(TextAlign.Center)
+                  .textAlign(TextAlign.Start)
                   .width('100%')
 
                 if (this.description.length > 0) {
@@ -62,15 +62,15 @@ export struct PageScaffold {
                     .fontSize(isCompactLayout() ? UiFont.BODY_SMALL : UiFont.BODY)
                     .fontColor(UiColors.TEXT_SECONDARY)
                     .lineHeight(isCompactLayout() ? 20 : 22)
-                    .textAlign(TextAlign.Center)
+                    .textAlign(TextAlign.Start)
                     .width('100%')
                 }
               }
-              .alignItems(HorizontalAlign.Center)
+              .alignItems(HorizontalAlign.Start)
               .width('100%')
             }
           }
-          .alignItems(HorizontalAlign.Center)
+          .alignItems(HorizontalAlign.Start)
           .width('100%')
         }
 
@@ -95,7 +95,7 @@ export struct PageScaffold {
       angle: 180,
       colors: [
         [UiColors.PAGE_GRADIENT_TOP, 0.0],
-        [UiColors.PAGE_GRADIENT_BOTTOM, 0.35],
+        [UiColors.PAGE_GRADIENT_BOTTOM, 0.4],
         [UiColors.PAGE_BACKGROUND, 1.0]
       ]
     })

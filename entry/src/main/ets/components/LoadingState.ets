@@ -9,31 +9,31 @@ export struct LoadingState {
   build() {
     Column({ space: UiSpace.MD }) {
       LoadingProgress()
-        .width(32)
-        .height(32)
+        .width(28)
+        .height(28)
         .color(UiColors.BRAND)
 
       Text(this.title)
         .fontSize(UiFont.SECTION_TITLE)
         .fontWeight(FontWeight.Bold)
         .fontColor(UiColors.TEXT_PRIMARY)
+        .width('100%')
 
       Text(this.description)
         .fontSize(UiFont.BODY)
         .fontColor(UiColors.TEXT_SECONDARY)
         .lineHeight(22)
-        .textAlign(TextAlign.Center)
+        .width('100%')
 
       if (this.detail.length > 0) {
         Text(this.detail)
           .fontSize(UiFont.CAPTION)
           .fontColor(UiColors.TEXT_TERTIARY)
           .lineHeight(18)
-          .textAlign(TextAlign.Center)
+          .width('100%')
       }
     }
-    .justifyContent(FlexAlign.Center)
-    .alignItems(HorizontalAlign.Center)
+    .alignItems(HorizontalAlign.Start)
     .width('100%')
     .padding({ top: UiSpace.XXL, bottom: UiSpace.XXL })
   }
