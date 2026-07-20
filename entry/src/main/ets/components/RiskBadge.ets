@@ -1,5 +1,5 @@
 import { RiskLevel } from '../model/enums/RiskLevel'
-import { UiColors, UiFont, UiRadius } from '../common/ui/DesignTokens'
+import { UiColors, UiFont } from '../common/ui/DesignTokens'
 
 @Component
 export struct RiskBadge {
@@ -7,15 +7,10 @@ export struct RiskBadge {
   count: number = -1
 
   build() {
-    Row() {
-      Text(this.buildLabel())
-        .fontSize(UiFont.BADGE)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.badgeTextColor())
-    }
-    .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-    .borderRadius(UiRadius.PILL)
-    .backgroundColor(this.badgeBackgroundColor())
+    Text(this.buildLabel())
+      .fontSize(UiFont.CAPTION)
+      .fontWeight(FontWeight.Medium)
+      .fontColor(this.badgeTextColor())
   }
 
   buildLabel(): string {
@@ -34,16 +29,6 @@ export struct RiskBadge {
       return '中风险'
     }
     return '低风险'
-  }
-
-  badgeBackgroundColor(): string {
-    if (this.riskLevel === RiskLevel.RED) {
-      return UiColors.DANGER_SOFT
-    }
-    if (this.riskLevel === RiskLevel.YELLOW) {
-      return UiColors.WARNING_SOFT
-    }
-    return UiColors.SUCCESS_SOFT
   }
 
   badgeTextColor(): string {

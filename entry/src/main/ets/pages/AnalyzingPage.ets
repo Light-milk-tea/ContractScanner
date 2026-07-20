@@ -3,12 +3,12 @@ import { RouteParams } from '../app/AppRouter'
 import { API_BASE_URL, RoutePath } from '../common/constants'
 import { AppError, ErrorCode } from '../common/errors'
 import { logError, logInfo } from '../common/logger'
-import { UiColors, UiSpace } from '../common/ui/DesignTokens'
+import { isCompactLayout } from '../common/ui/LayoutHelpers'
+import { UiColors, UiFont, UiSpace } from '../common/ui/DesignTokens'
 import { GhostButton, PrimaryButton } from '../components/ActionButtons'
 import { AnalyzeProgress } from '../components/AnalyzeProgress'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
 import { PageScaffold } from '../components/PageScaffold'
-import { SurfaceCard } from '../components/SurfaceCard'
 import { AnalyzeStatus } from '../model/enums/AnalyzeStatus'
 import { AnalyzeVM } from '../model/viewmodel/AnalyzeVM'
 import { ContractApi } from '../services/api/ContractApi'
@@ -20,6 +20,7 @@ struct AnalyzingPage {
 
   @State taskId: string = ''
   @State status: AnalyzeStatus = AnalyzeStatus.PENDING
+  @State stageIndex: number = 0
   @State progressText: string = '等待开始'
   @State errorText: string = ''
   @State noticeText: string = ''
@@ -30,6 +31,7 @@ struct AnalyzingPage {
   @State isNavigatingToResult: boolean = false
 
   timerId: number = -1
+  progressTimerId: number = -1
   api: ContractApi = new ContractApi(API_BASE_URL)
 
   aboutToAppear(): void {
@@ -46,12 +48,14 @@ struct AnalyzingPage {
     }
 
     logInfo(`Open analyzing page: taskId=${taskId}, baseUrl=${this.apiBaseUrl()}`, 'AnalyzingPage')
+    this.analyzeVM.updateStatus(AnalyzeStatus.PENDING)
     this.syncFromViewModel()
     this.startPolling()
   }
 
   aboutToDisappear(): void {
     this.stopPolling()
+    this.stopProgressTicker()
     this.clearTransientUiState()
   }
 
@@ -59,85 +63,92 @@ struct AnalyzingPage {
     Column() {
       PageScaffold({
         title: '分析中',
-        description: '完成后会自动打开结果页。',
+        description: '请稍候，完成后会自动打开结果页。',
         backText: '返回首页',
         onBack: () => {
           this.leaveToHome()
         }
       }) {
-        Column({ space: UiSpace.XL }) {
-        AnalyzeProgress({
-          status: this.status,
-          progressText: this.progressText,
-          progressValue: this.progressValue
-        })
-
-        if (this.noticeText.length > 0) {
-          SurfaceCard({
-            tone: 'inset',
-            paddingValue: UiSpace.LG
-          }) {
-            Text(this.noticeText)
-              .fontSize(13)
-              .fontColor(UiColors.WARNING)
-              .lineHeight(20)
-          }
-        }
-
-        if (this.errorText.length > 0 || this.status === AnalyzeStatus.FAILED) {
-          EmptyState({
-            title: '分析未完成',
-            description: this.errorText.length > 0 ? this.errorText : '分析任务执行失败，请重试或返回重新发起分析。',
-            hint: '可点击“重试”重新发起轮询。',
-            stateType: EmptyStateType.ERROR
+        Column({ space: isCompactLayout() ? UiSpace.MD : UiSpace.LG }) {
+          AnalyzeProgress({
+            status: this.status,
+            stageIndex: this.stageIndex,
+            progressText: this.progressText,
+            progressValue: this.progressValue
           })
-        }
 
-        Column({ space: UiSpace.MD }) {
-          if (this.canGoResult && !this.isNavigatingToResult) {
-            PrimaryButton({
-              label: '查看结果',
-              fillWidth: true,
-              isEnabled: !this.isNavigatingToResult,
-              onTap: () => {
-                this.goResult()
-              }
+          if (this.noticeText.length > 0) {
+            Text(this.noticeText)
+              .fontSize(UiFont.BODY_SMALL)
+              .fontColor(UiColors.WARNING)
+              .lineHeight(22)
+              .width('100%')
+          }
+
+          if (this.errorText.length > 0 || this.status === AnalyzeStatus.FAILED) {
+            EmptyState({
+              title: '分析未完成',
+              description: this.errorText.length > 0 ? this.errorText : '分析任务执行失败，请重试或返回重新发起分析。',
+              hint: '可点击“重试”重新发起轮询。',
+              stateType: EmptyStateType.ERROR
             })
           }
 
-          if (this.status === AnalyzeStatus.FAILED || this.errorText.length > 0) {
-            PrimaryButton({
-              label: '重试',
-              fillWidth: true,
-              isEnabled: !this.isPolling,
-              onTap: () => {
-                this.retry()
-              }
-            })
-          }
+          Column({ space: UiSpace.MD }) {
+            if (this.canGoResult && !this.isNavigatingToResult) {
+              PrimaryButton({
+                label: '查看结果',
+                fillWidth: true,
+                isEnabled: !this.isNavigatingToResult,
+                onTap: () => {
+                  this.goResult()
+                }
+              })
+            }
 
-          Row({ space: UiSpace.SM }) {
-            GhostButton({
-              label: '返回首页',
-              fillWidth: true,
-              onTap: () => {
-                this.leaveToHome()
-              }
-            })
-            if (!this.canGoResult && this.status !== AnalyzeStatus.FAILED) {
-              GhostButton({
-                label: this.isPolling ? '刷新中' : '开始轮询',
+            if (this.status === AnalyzeStatus.FAILED || this.errorText.length > 0) {
+              PrimaryButton({
+                label: '重试',
                 fillWidth: true,
                 isEnabled: !this.isPolling,
                 onTap: () => {
-                  this.startPolling()
+                  this.retry()
+                }
+              })
+            }
+
+            if (this.status === AnalyzeStatus.FAILED || this.errorText.length > 0 ||
+              (!this.isPolling && !this.canGoResult)) {
+              Row({ space: UiSpace.SM }) {
+                GhostButton({
+                  label: '返回首页',
+                  fillWidth: true,
+                  onTap: () => {
+                    this.leaveToHome()
+                  }
+                })
+                if (!this.canGoResult && this.status !== AnalyzeStatus.FAILED && !this.isPolling) {
+                  GhostButton({
+                    label: '继续分析',
+                    fillWidth: true,
+                    onTap: () => {
+                      this.startPolling()
+                    }
+                  })
+                }
+              }
+              .width('100%')
+            } else if (!this.canGoResult) {
+              GhostButton({
+                label: '返回首页',
+                fillWidth: true,
+                onTap: () => {
+                  this.leaveToHome()
                 }
               })
             }
           }
           .width('100%')
-        }
-        .width('100%')
         }
         .alignItems(HorizontalAlign.Start)
         .width('100%')
@@ -162,6 +173,7 @@ struct AnalyzingPage {
     this.canGoResult = false
     this.isPolling = true
     logInfo(`Start polling: taskId=${this.taskId}, isDemo=${this.analyzeVM.isDemoTask()}`, 'AnalyzingPage')
+    this.startProgressTicker()
 
     if (this.analyzeVM.isDemoTask()) {
       this.demoStep = 0
@@ -186,6 +198,33 @@ struct AnalyzingPage {
     this.isPolling = false
   }
 
+  startProgressTicker(): void {
+    if (this.progressTimerId >= 0) {
+      return
+    }
+    this.progressTimerId = setInterval(() => {
+      this.tickDisplayedProgress()
+    }, 32)
+  }
+
+  stopProgressTicker(): void {
+    if (this.progressTimerId < 0) {
+      return
+    }
+    clearInterval(this.progressTimerId)
+    this.progressTimerId = -1
+  }
+
+  tickDisplayedProgress(): void {
+    if (!this.analyzeVM.tickProgress()) {
+      return
+    }
+    // 短线性插值衔接相邻 tick，叠加上 Progress.enableSmoothEffect
+    this.getUIContext().animateTo({ duration: 36, curve: Curve.Linear }, () => {
+      this.progressValue = this.analyzeVM.progressValue
+    })
+  }
+
   async pollOnce(): Promise<void> {
     try {
       const response = await this.api.getTaskStatus(this.taskId)
@@ -198,11 +237,13 @@ struct AnalyzingPage {
         this.errorText = `${error.message} (${error.code})`
         logError('Analyze poll failed', error.details ?? '', 'AnalyzingPage')
         this.stopPolling()
+        this.stopProgressTicker()
         return
       }
       this.errorText = `轮询失败，请检查网络与服务地址 (${ErrorCode.TASK_002})`
       logError('Analyze poll failed', JSON.stringify(error), 'AnalyzingPage')
       this.stopPolling()
+      this.stopProgressTicker()
     }
   }
 
@@ -211,11 +252,22 @@ struct AnalyzingPage {
       return
     }
 
-    logInfo(`Task status changed: taskId=${this.taskId}, from=${this.status}, to=${status}`, 'AnalyzingPage')
+    const statusChanged: boolean = status !== this.status
+    if (statusChanged) {
+      logInfo(`Task status changed: taskId=${this.taskId}, from=${this.status}, to=${status}`, 'AnalyzingPage')
+    }
     this.analyzeVM.updateStatus(status)
-    this.syncFromViewModel()
+    if (statusChanged || status === AnalyzeStatus.SUCCESS) {
+      this.syncFromViewModel()
+    } else {
+      // 状态未变时保留缓动进度，只同步文案 / 阶段 / 可跳转态
+      this.progressText = this.analyzeVM.progressText
+      this.stageIndex = this.analyzeVM.stageIndex()
+      this.canGoResult = this.analyzeVM.canGoResult()
+    }
     if (this.analyzeVM.shouldStopPolling()) {
       this.stopPolling()
+      this.stopProgressTicker()
     }
     if (status === AnalyzeStatus.FAILED && this.errorText.length === 0) {
       this.errorText = '分析任务失败，请修正配置后重试。'
@@ -239,11 +291,17 @@ struct AnalyzingPage {
   syncFromViewModel(): void {
     this.taskId = this.analyzeVM.taskId
     this.status = this.analyzeVM.status
+    this.stageIndex = this.analyzeVM.stageIndex()
     this.progressText = this.analyzeVM.progressText
     this.canGoResult = this.analyzeVM.canGoResult()
-    this.getUIContext().animateTo({ duration: 320, curve: Curve.EaseOut }, () => {
-      this.progressValue = this.analyzeVM.progressValue
-    })
+    // 完成态从当前进度缓到 100%，拉长过渡，减少「卡住再跳满」的割裂感
+    if (this.analyzeVM.status === AnalyzeStatus.SUCCESS) {
+      this.getUIContext().animateTo({ duration: 720, curve: Curve.EaseOut }, () => {
+        this.progressValue = 100
+      })
+      return
+    }
+    this.progressValue = this.analyzeVM.progressValue
   }
 
   scheduleNextDemoStep(): void {
@@ -286,9 +344,10 @@ struct AnalyzingPage {
     }
     this.noticeText = this.analyzeVM.isDemoTask() ? '分析完成，正在打开演示结果页。' : '分析完成，正在打开结果页。'
     this.isNavigatingToResult = true
+    // 略长于收尾到 100% 的动画，让进度走完再跳转
     setTimeout(() => {
       this.goResult()
-    }, 400)
+    }, 850)
   }
 
   shouldShowPollingState(): boolean {
@@ -328,6 +387,8 @@ struct AnalyzingPage {
   }
 
   async leaveToHome(): Promise<void> {
+    this.stopPolling()
+    this.stopProgressTicker()
     this.clearTransientUiState()
     await goBackToHome(this.getUIContext())
   }

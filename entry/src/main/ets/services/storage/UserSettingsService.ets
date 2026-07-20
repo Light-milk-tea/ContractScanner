@@ -1,5 +1,5 @@
 import { common } from '@kit.AbilityKit'
-import { StorageKey } from '../../common/constants'
+import { resolveEffectiveApiBaseUrl, StorageKey } from '../../common/constants'
 import { DemoFaultMode } from '../../model/enums/DemoMode'
 import { SessionStore } from './SessionStore'
 
@@ -20,7 +20,14 @@ export class UserSettingsService {
   }
 
   async loadServiceBaseUrl(context: common.UIAbilityContext, defaultValue: string): Promise<string> {
-    return await this.sessionStore.getString(context, StorageKey.SERVICE_BASE_URL, defaultValue)
+    const savedBaseUrl = await this.sessionStore.getString(context, StorageKey.SERVICE_BASE_URL, '')
+    const configuredBaseUrl = savedBaseUrl.length > 0 ? savedBaseUrl : defaultValue
+    const effectiveBaseUrl = resolveEffectiveApiBaseUrl(configuredBaseUrl)
+    // 模拟器上把历史保存的 127.0.0.1/localhost 自动迁移为开发机网关地址
+    if (savedBaseUrl.length > 0 && effectiveBaseUrl !== savedBaseUrl) {
+      await this.sessionStore.putString(context, StorageKey.SERVICE_BASE_URL, effectiveBaseUrl)
+    }
+    return effectiveBaseUrl
   }
 
   async saveServiceBaseUrl(context: common.UIAbilityContext, baseUrl: string): Promise<void> {

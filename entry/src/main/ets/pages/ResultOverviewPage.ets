@@ -3,6 +3,7 @@ import { back, goClauseCompare, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
 import { logError, logInfo } from '../common/logger'
+import { isCompactLayout } from '../common/ui/LayoutHelpers'
 import { UiColors, UiFont, UiRadius, UiShadow, UiSpace } from '../common/ui/DesignTokens'
 import { GhostButton, PrimaryButton } from '../components/ActionButtons'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
@@ -11,7 +12,6 @@ import { PageScaffold } from '../components/PageScaffold'
 import { RiskBadge } from '../components/RiskBadge'
 import { SectionHeader } from '../components/SectionHeader'
 import { SummaryCard } from '../components/SummaryCard'
-import { SurfaceCard } from '../components/SurfaceCard'
 import { AnalysisResult } from '../model/domain/AnalysisResult'
 import { ClauseRisk } from '../model/domain/ClauseRisk'
 import { Contract } from '../model/domain/Contract'
@@ -65,7 +65,7 @@ struct ResultOverviewPage {
           back(this.getUIContext())
         }
       }) {
-        Column({ space: UiSpace.LG }) {
+        Column({ space: isCompactLayout() ? UiSpace.MD : UiSpace.LG }) {
         if (this.isLoading) {
           LoadingState({
             title: '正在加载分析结果',
@@ -105,17 +105,10 @@ struct ResultOverviewPage {
 
         if (this.currentResult !== undefined) {
           if (this.privacyGuardEnabled) {
-            SurfaceCard({
-              surfaceColor: UiColors.SURFACE_ACCENT,
-              strokeColor: UiColors.BRAND_SOFT,
-              paddingValue: UiSpace.LG,
-              radius: UiRadius.MEDIUM,
-              tone: 'flat'
-            }) {
-              Text('已开启隐私防窥，当前页面会限制截屏和录屏。')
-                .fontSize(UiFont.CAPTION)
-                .fontColor(UiColors.BRAND)
-            }
+            Text('已开启隐私防窥，当前页面会限制截屏和录屏。')
+              .fontSize(UiFont.CAPTION)
+              .fontColor(UiColors.BRAND)
+              .width('100%')
           }
 
           SummaryCard({
@@ -133,11 +126,12 @@ struct ResultOverviewPage {
               title: '风险条目',
               description: '点击条目查看原文、白话解释与修改建议。'
             })
+
             ForEach(this.currentResult.clauses, (clause: ClauseRisk) => {
               Row({ space: UiSpace.MD }) {
                 Column()
-                  .width(4)
-                  .height(48)
+                  .width(3)
+                  .height(36)
                   .borderRadius(UiRadius.PILL)
                   .backgroundColor(this.riskBarColor(clause.riskLevel))
 
@@ -149,6 +143,7 @@ struct ResultOverviewPage {
                       .fontColor(UiColors.TEXT_PRIMARY)
                       .layoutWeight(1)
                       .maxLines(2)
+                      .textOverflow({ overflow: TextOverflow.Ellipsis })
                     RiskBadge({ riskLevel: clause.riskLevel })
                   }
                   .width('100%')
@@ -156,8 +151,8 @@ struct ResultOverviewPage {
                   Text(clause.riskReason)
                     .fontSize(UiFont.BODY_SMALL)
                     .fontColor(UiColors.TEXT_SECONDARY)
-                    .maxLines(2)
-                    .lineHeight(20)
+                    .maxLines(3)
+                    .lineHeight(22)
 
                   Text('查看对照阅读 ›')
                     .fontSize(UiFont.CAPTION)
@@ -167,15 +162,15 @@ struct ResultOverviewPage {
                 .layoutWeight(1)
               }
               .width('100%')
-              .alignItems(VerticalAlign.Center)
+              .alignItems(VerticalAlign.Top)
               .padding({
-                left: UiSpace.MD,
+                left: UiSpace.LG,
                 right: UiSpace.LG,
                 top: UiSpace.LG,
                 bottom: UiSpace.LG
               })
               .backgroundColor(UiColors.SURFACE_PRIMARY)
-              .borderRadius(UiRadius.MEDIUM)
+              .borderRadius(UiRadius.LARGE)
               .shadow({
                 radius: UiShadow.SOFT_RADIUS,
                 color: UiShadow.SOFT_COLOR,

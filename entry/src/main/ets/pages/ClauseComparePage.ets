@@ -10,7 +10,6 @@ import { ClauseBlock } from '../components/ClauseBlock'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
 import { LoadingState } from '../components/LoadingState'
 import { PageScaffold } from '../components/PageScaffold'
-import { SurfaceCard } from '../components/SurfaceCard'
 import { AnalysisResult } from '../model/domain/AnalysisResult'
 import { ClauseRisk } from '../model/domain/ClauseRisk'
 import { ResultVM } from '../model/viewmodel/ResultVM'
@@ -48,7 +47,7 @@ struct ClauseComparePage {
     Column() {
       PageScaffold({
         title: '条款对照阅读',
-        description: '原文、白话、风险原因与修改建议。',
+        description: '',
         backText: '返回结果页',
         onBack: () => {
           back(this.getUIContext())
@@ -93,16 +92,10 @@ struct ClauseComparePage {
 
         if (this.currentClause !== undefined) {
           if (this.privacyGuardEnabled) {
-            SurfaceCard({
-              surfaceColor: UiColors.SURFACE_ACCENT,
-              strokeColor: UiColors.BRAND_SOFT,
-              paddingValue: UiSpace.LG,
-              tone: 'flat'
-            }) {
-              Text('已开启隐私防窥，当前条款详情页会限制截屏和录屏。')
-                .fontSize(UiFont.CAPTION)
-                .fontColor(UiColors.BRAND)
-            }
+            Text('已开启隐私防窥，当前条款详情页会限制截屏和录屏。')
+              .fontSize(UiFont.CAPTION)
+              .fontColor(UiColors.BRAND)
+              .width('100%')
           }
 
           Column() {

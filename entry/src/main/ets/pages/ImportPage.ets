@@ -4,9 +4,16 @@ import { picker } from '@kit.CoreFileKit'
 import { photoAccessHelper } from '@kit.MediaLibraryKit'
 
 import { back, goAnalyzing, RouteParams } from '../app/AppRouter'
-import { API_BASE_URL } from '../common/constants'
+import {
+  API_BASE_URL,
+  isEmulatorRuntime,
+  networkFailureHint,
+  resolveDefaultApiBaseUrl,
+  resolveEffectiveApiBaseUrl
+} from '../common/constants'
 import { AppError } from '../common/errors'
 import { logError, logInfo } from '../common/logger'
+import { isCompactLayout } from '../common/ui/LayoutHelpers'
 import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
 import { GhostButton, PrimaryButton, SegmentChip } from '../components/ActionButtons'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
@@ -18,6 +25,7 @@ import { Contract } from '../model/domain/Contract'
 import { DemoFaultMode, DemoSamplePreset } from '../model/enums/DemoMode'
 import { ImportVM } from '../model/viewmodel/ImportVM'
 import { ContractApi } from '../services/api/ContractApi'
+import { ServiceHealthProbe } from '../services/api/ServiceHealthProbe'
 import { MockContractService } from '../services/mock/MockContractService'
 import { FileImportService } from '../services/parser/FileImportService'
 import { CacheService } from '../services/storage/CacheService'
@@ -43,6 +51,7 @@ struct ImportPage {
   @State demoModeNoticeColor: string = '#666666'
 
   fileImportService: FileImportService = new FileImportService()
+  serviceHealthProbe: ServiceHealthProbe = new ServiceHealthProbe()
   cacheService: CacheService = new CacheService()
   userSettingsService: UserSettingsService = new UserSettingsService()
 
@@ -60,38 +69,53 @@ struct ImportPage {
           back(this.getUIContext())
         }
       }) {
-        Column({ space: UiSpace.LG }) {
+        Column({ space: isCompactLayout() ? UiSpace.MD : UiSpace.LG }) {
         SurfaceCard() {
           Column({ space: UiSpace.MD }) {
             SectionHeader({
               title: '导入方式',
               description: '选择合同来源后继续选择文件。'
             })
-            Row({ space: UiSpace.SM }) {
-              SegmentChip({
-                label: '拍照',
-                selected: this.importVM.selectedSource === 'CAMERA',
-                isEnabled: !this.isSubmitting,
-                onTap: () => {
-                  void this.handleSourceSelection('CAMERA')
-                }
-              })
-              SegmentChip({
-                label: '相册',
-                selected: this.importVM.selectedSource === 'GALLERY',
-                isEnabled: !this.isSubmitting,
-                onTap: () => {
-                  void this.handleSourceSelection('GALLERY')
-                }
-              })
-              SegmentChip({
-                label: '本地文件',
-                selected: this.importVM.selectedSource === 'LOCAL_FILE',
-                isEnabled: !this.isSubmitting,
-                onTap: () => {
-                  void this.handleSourceSelection('LOCAL_FILE')
-                }
-              })
+            Flex({
+              wrap: FlexWrap.Wrap,
+              justifyContent: FlexAlign.Start,
+              alignItems: ItemAlign.Center
+            }) {
+              Row() {
+                SegmentChip({
+                  label: '拍照',
+                  selected: this.importVM.selectedSource === 'CAMERA',
+                  isEnabled: !this.isSubmitting,
+                  onTap: () => {
+                    void this.handleSourceSelection('CAMERA')
+                  }
+                })
+              }
+              .margin({ right: UiSpace.SM, bottom: UiSpace.SM })
+
+              Row() {
+                SegmentChip({
+                  label: '相册',
+                  selected: this.importVM.selectedSource === 'GALLERY',
+                  isEnabled: !this.isSubmitting,
+                  onTap: () => {
+                    void this.handleSourceSelection('GALLERY')
+                  }
+                })
+              }
+              .margin({ right: UiSpace.SM, bottom: UiSpace.SM })
+
+              Row() {
+                SegmentChip({
+                  label: '本地文件',
+                  selected: this.importVM.selectedSource === 'LOCAL_FILE',
+                  isEnabled: !this.isSubmitting,
+                  onTap: () => {
+                    void this.handleSourceSelection('LOCAL_FILE')
+                  }
+                })
+              }
+              .margin({ right: UiSpace.SM, bottom: UiSpace.SM })
             }
             .width('100%')
           }
@@ -119,35 +143,51 @@ struct ImportPage {
               Text('演示样例')
                 .fontSize(UiFont.CAPTION)
                 .fontColor(UiColors.TEXT_TERTIARY)
-              Row({ space: UiSpace.SM }) {
-                SegmentChip({
-                  label: '高风险样例',
-                  selected: this.selectedDemoPreset === DemoSamplePreset.HIGH_RISK,
-                  isEnabled: !this.isSubmitting,
-                  onTap: () => {
-                    this.applyDemoSample(DemoSamplePreset.HIGH_RISK)
-                  }
-                })
-                SegmentChip({
-                  label: '低风险样例',
-                  selected: this.selectedDemoPreset === DemoSamplePreset.LOW_RISK,
-                  isEnabled: !this.isSubmitting,
-                  onTap: () => {
-                    this.applyDemoSample(DemoSamplePreset.LOW_RISK)
-                  }
-                })
-                GhostButton({
-                  label: '清空',
-                  isEnabled: !this.isSubmitting,
-                  onTap: () => {
-                    this.fileUri = ''
-                    this.fileName = ''
-                    this.selectedDemoPreset = DemoSamplePreset.NONE
-                    this.importVM.reset()
-                    this.errorText = ''
-                  }
-                })
+              Flex({
+                wrap: FlexWrap.Wrap,
+                justifyContent: FlexAlign.Start,
+                alignItems: ItemAlign.Center
+              }) {
+                Row() {
+                  SegmentChip({
+                    label: '高风险样例',
+                    selected: this.selectedDemoPreset === DemoSamplePreset.HIGH_RISK,
+                    isEnabled: !this.isSubmitting,
+                    onTap: () => {
+                      this.applyDemoSample(DemoSamplePreset.HIGH_RISK)
+                    }
+                  })
+                }
+                .margin({ right: UiSpace.SM, bottom: UiSpace.SM })
+
+                Row() {
+                  SegmentChip({
+                    label: '低风险样例',
+                    selected: this.selectedDemoPreset === DemoSamplePreset.LOW_RISK,
+                    isEnabled: !this.isSubmitting,
+                    onTap: () => {
+                      this.applyDemoSample(DemoSamplePreset.LOW_RISK)
+                    }
+                  })
+                }
+                .margin({ right: UiSpace.SM, bottom: UiSpace.SM })
+
+                Row() {
+                  GhostButton({
+                    label: '清空',
+                    isEnabled: !this.isSubmitting,
+                    onTap: () => {
+                      this.fileUri = ''
+                      this.fileName = ''
+                      this.selectedDemoPreset = DemoSamplePreset.NONE
+                      this.importVM.reset()
+                      this.errorText = ''
+                    }
+                  })
+                }
+                .margin({ right: UiSpace.SM, bottom: UiSpace.SM })
               }
+              .width('100%')
             }
             .alignItems(HorizontalAlign.Start)
             .width('100%')
@@ -187,12 +227,16 @@ struct ImportPage {
               }
             }
 
-            Text(this.demoSampleHint())
-              .fontSize(UiFont.CAPTION)
-              .fontColor(UiColors.TEXT_SECONDARY)
-            Text(this.demoModeNoticeText)
-              .fontSize(UiFont.CAPTION)
-              .fontColor(this.demoModeNoticeColor)
+            if (this.demoSampleHint().length > 0) {
+              Text(this.demoSampleHint())
+                .fontSize(UiFont.CAPTION)
+                .fontColor(UiColors.TEXT_SECONDARY)
+            }
+            if (this.demoFaultMode !== DemoFaultMode.NONE) {
+              Text(this.demoModeNoticeText)
+                .fontSize(UiFont.CAPTION)
+                .fontColor(this.demoModeNoticeColor)
+            }
             Text(`服务：${this.baseUrl}`)
               .fontSize(UiFont.CAPTION)
               .fontColor(UiColors.TEXT_TERTIARY)
@@ -278,6 +322,12 @@ struct ImportPage {
 
     this.isSubmitting = true
     try {
+      const reachable = await this.ensureReachableServiceBaseUrl()
+      if (!reachable) {
+        this.canContinueDemo = true
+        return
+      }
+
       logInfo(
         `Start analyze: file=${this.fileName}, source=${this.importVM.selectedSource}, preset=${this.selectedOrDefaultDemoPreset()}, faultMode=${this.demoFaultMode}, baseUrl=${this.baseUrl}`,
         'ImportPage'
@@ -310,17 +360,39 @@ struct ImportPage {
       await this.goToAnalyzing(result.taskId)
     } catch (error) {
       if (error instanceof AppError) {
-        this.errorText = `${error.message} (${error.code})`
+        const hint = networkFailureHint(error.details)
+        this.errorText = `${error.message} (${error.code})。${hint}`
         logError('Import analyze failed', error.details ?? '', 'ImportPage')
         this.canContinueDemo = true
         return
       }
-      this.errorText = '导入失败，请检查网络与服务地址'
+      this.errorText = `导入失败，请检查网络与服务地址。${networkFailureHint()}`
       logError('Import analyze failed', JSON.stringify(error), 'ImportPage')
       this.canContinueDemo = true
     } finally {
       this.isSubmitting = false
     }
+  }
+
+  async ensureReachableServiceBaseUrl(): Promise<boolean> {
+    this.baseUrlNoticeText = '正在自动检测可用服务地址...'
+    this.baseUrlNoticeColor = '#666666'
+    const probeResult = await this.serviceHealthProbe.findReachableBaseUrl(this.baseUrl)
+    if (!probeResult.ok) {
+      this.errorText = probeResult.message
+      this.baseUrlNoticeText = '未检测到可用服务地址，请检查后端与模拟器代理。'
+      this.baseUrlNoticeColor = '#C0392B'
+      return false
+    }
+
+    this.baseUrl = probeResult.baseUrl
+    this.baseUrlNoticeText = probeResult.message
+    this.baseUrlNoticeColor = '#2A8F5B'
+    const hostContext = this.getHostContext()
+    if (hostContext !== undefined) {
+      await this.userSettingsService.saveServiceBaseUrl(hostContext, probeResult.baseUrl)
+    }
+    return true
   }
 
   async handleSourceSelection(source: string): Promise<void> {
@@ -523,24 +595,30 @@ struct ImportPage {
   async initializePage(): Promise<void> {
     const hostContext = this.getHostContext()
     if (hostContext !== undefined) {
-      const savedBaseUrl = await this.userSettingsService.loadServiceBaseUrl(hostContext, API_BASE_URL)
+      const defaultBaseUrl = resolveDefaultApiBaseUrl()
+      const savedBaseUrl = await this.userSettingsService.loadServiceBaseUrl(hostContext, defaultBaseUrl)
       this.demoFaultMode = await this.userSettingsService.loadDemoFaultMode(hostContext)
       const recentContracts = await this.cacheService.loadRecentContracts(hostContext)
-      const recentBaseUrl = this.findLatestRealBaseUrl(recentContracts)
+      const rawRecentBaseUrl = this.findLatestRealBaseUrl(recentContracts)
+      const recentBaseUrl = rawRecentBaseUrl.length > 0
+        ? resolveEffectiveApiBaseUrl(rawRecentBaseUrl)
+        : ''
       const effectiveBaseUrl = recentBaseUrl.length > 0 ? recentBaseUrl : savedBaseUrl
       if (effectiveBaseUrl !== savedBaseUrl) {
         await this.userSettingsService.saveServiceBaseUrl(hostContext, effectiveBaseUrl)
       }
       this.baseUrl = effectiveBaseUrl
-      if (effectiveBaseUrl === API_BASE_URL) {
-        this.baseUrlNoticeText = '当前使用默认服务地址。'
+      if (effectiveBaseUrl === defaultBaseUrl) {
+        this.baseUrlNoticeText = isEmulatorRuntime()
+          ? '当前使用模拟器自动联网地址；提交时会探测局域网 IP / 10.0.2.2。'
+          : '当前使用默认服务地址。'
         this.baseUrlNoticeColor = '#666666'
       } else {
         this.baseUrlNoticeText = '已自动回填最近一次真实分析成功的服务地址，可直接开始分析。'
         this.baseUrlNoticeColor = '#2A8F5B'
       }
     } else {
-      this.baseUrl = API_BASE_URL
+      this.baseUrl = resolveDefaultApiBaseUrl()
       this.baseUrlNoticeText = '当前页面上下文不可用，暂时无法读取已保存的服务地址。'
       this.baseUrlNoticeColor = '#C0392B'
       this.demoFaultMode = DemoFaultMode.NONE
@@ -630,6 +708,6 @@ struct ImportPage {
     if (this.selectedDemoPreset === DemoSamplePreset.HIGH_RISK) {
       return '当前已选择高风险样例：适合演示自动续约、押金退还不明等高风险问题。'
     }
-    return '未选择样例时，仍可导入真实文件；选择样例后也可直接进入本地演示链路。'
+    return ''
   }
 }

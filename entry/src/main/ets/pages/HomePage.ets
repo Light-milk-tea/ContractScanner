@@ -2,7 +2,13 @@ import { common } from '@kit.AbilityKit'
 import { goImport, goResultOverview, goSettings, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
 import { logError } from '../common/logger'
-import { contentMaxWidth, pageHorizontalPadding, pageVerticalPadding } from '../common/ui/LayoutHelpers'
+import {
+  contentMaxWidth,
+  isCompactLayout,
+  pageHorizontalPadding,
+  pageVerticalPadding,
+  sectionGap
+} from '../common/ui/LayoutHelpers'
 import { LayoutMetrics, UiColors, UiFont, UiRadius, UiShadow, UiSpace } from '../common/ui/DesignTokens'
 import { GhostButton, PrimaryButton } from '../components/ActionButtons'
 import { EmptyState, EmptyStateType } from '../components/EmptyState'
@@ -36,57 +42,49 @@ struct HomePage {
 
   build() {
     Scroll() {
-      Column({ space: UiSpace.XXL }) {
+      Column({ space: sectionGap() }) {
         Column({ space: UiSpace.XL }) {
           Row() {
             Blank()
             Text('设置')
               .fontSize(UiFont.BODY_SMALL)
               .fontColor(UiColors.BRAND)
-              .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-              .backgroundColor(UiColors.SURFACE_PRIMARY)
-              .borderRadius(UiRadius.PILL)
-              .shadow({
-                radius: UiShadow.SOFT_RADIUS,
-                color: UiShadow.SOFT_COLOR,
-                offsetX: 0,
-                offsetY: 4
-              })
+              .padding({ left: 4, right: 4, top: 6, bottom: 6 })
               .onClick(() => {
                 goSettings(this.getUIContext())
               })
           }
           .width('100%')
 
-          Column({ space: UiSpace.MD }) {
-            Text('法言白话')
-              .fontSize(UiFont.HERO)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(UiColors.TEXT_PRIMARY)
-              .letterSpacing(0.5)
+          Column({ space: UiSpace.LG }) {
+            Column({ space: UiSpace.SM }) {
+              Text('法言白话')
+                .fontSize(isCompactLayout() ? 36 : 42)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(UiColors.TEXT_PRIMARY)
+                .letterSpacing(4)
+                .textAlign(TextAlign.Center)
+                .width('100%')
 
-            Text('把晦涩合同变成可快速理解的白话摘要，并提前标出值得注意的风险条款。')
-              .fontSize(UiFont.BODY)
-              .fontColor(UiColors.TEXT_SECONDARY)
-              .lineHeight(24)
+              Row()
+                .width(36)
+                .height(3)
+                .borderRadius(UiRadius.PILL)
+                .backgroundColor(UiColors.BRAND)
+            }
+            .alignItems(HorizontalAlign.Center)
+            .width('100%')
+
+            Text('导入  ·  分析  ·  解读')
+              .fontSize(UiFont.BODY_SMALL)
+              .fontColor(UiColors.TEXT_TERTIARY)
+              .letterSpacing(1)
+              .textAlign(TextAlign.Center)
               .width('100%')
           }
-          .alignItems(HorizontalAlign.Start)
+          .alignItems(HorizontalAlign.Center)
           .width('100%')
-
-          Row({ space: UiSpace.SM }) {
-            this.stepChip('1', '导入')
-            Text('→')
-              .fontSize(UiFont.CAPTION)
-              .fontColor(UiColors.TEXT_TERTIARY)
-            this.stepChip('2', '分析')
-            Text('→')
-              .fontSize(UiFont.CAPTION)
-              .fontColor(UiColors.TEXT_TERTIARY)
-            this.stepChip('3', '解读')
-          }
-          .width('100%')
-          .justifyContent(FlexAlign.Start)
+          .padding({ top: UiSpace.MD, bottom: UiSpace.SM })
 
           PrimaryButton({
             label: '导入合同',
@@ -96,30 +94,10 @@ struct HomePage {
             }
           })
         }
-        .alignItems(HorizontalAlign.Start)
+        .alignItems(HorizontalAlign.Center)
         .width('100%')
-        .padding({
-          left: UiSpace.XXL,
-          right: UiSpace.XXL,
-          top: UiSpace.XXL,
-          bottom: UiSpace.XXL
-        })
-        .borderRadius(UiRadius.XLARGE)
-        .linearGradient({
-          angle: 145,
-          colors: [
-            [UiColors.SURFACE_PRIMARY, 0.0],
-            [UiColors.SURFACE_ACCENT, 1.0]
-          ]
-        })
-        .shadow({
-          radius: UiShadow.CARD_RADIUS,
-          color: UiShadow.CARD_COLOR,
-          offsetX: 0,
-          offsetY: UiShadow.CARD_OFFSET_Y
-        })
 
-        Column({ space: UiSpace.MD }) {
+        Column({ space: UiSpace.LG }) {
           SectionHeader({
             title: '最近记录',
             description: '本地保留最近 5 条结果，便于快速回看。'
@@ -160,18 +138,19 @@ struct HomePage {
                 Row({ space: UiSpace.MD }) {
                   Column()
                     .width(LayoutMetrics.RISK_BAR_WIDTH)
-                    .height(36)
+                    .height(32)
                     .borderRadius(UiRadius.PILL)
                     .backgroundColor(this.statusBarColor(contract.status))
 
-                  Column({ space: UiSpace.XS }) {
+                  Column({ space: 4 }) {
                     Text(contract.contractName)
                       .fontSize(UiFont.BODY)
                       .fontWeight(FontWeight.Medium)
                       .fontColor(UiColors.TEXT_PRIMARY)
                       .maxLines(1)
                       .textOverflow({ overflow: TextOverflow.Ellipsis })
-                    Text(contract.createdAt ?? '生成时间待更新')
+                      .width('100%')
+                    Text(`${this.formatCreatedAt(contract.createdAt)}  ·  ${this.statusLabel(contract.status)}`)
                       .fontSize(UiFont.CAPTION)
                       .fontColor(UiColors.TEXT_TERTIARY)
                       .maxLines(1)
@@ -179,26 +158,20 @@ struct HomePage {
                   .alignItems(HorizontalAlign.Start)
                   .layoutWeight(1)
 
-                  Text(this.statusLabel(contract.status))
-                    .fontSize(UiFont.BADGE)
-                    .fontColor(UiColors.BRAND)
-                    .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-                    .backgroundColor(UiColors.BRAND_SOFT)
-                    .borderRadius(UiRadius.PILL)
-
                   Text('›')
-                    .fontSize(22)
+                    .fontSize(20)
                     .fontColor(UiColors.TEXT_TERTIARY)
                 }
                 .width('100%')
-                .height(64)
                 .alignItems(VerticalAlign.Center)
                 .padding({
-                  left: UiSpace.MD,
-                  right: UiSpace.LG
+                  left: UiSpace.LG,
+                  right: UiSpace.LG,
+                  top: UiSpace.LG,
+                  bottom: UiSpace.LG
                 })
                 .backgroundColor(UiColors.SURFACE_PRIMARY)
-                .borderRadius(UiRadius.MEDIUM)
+                .borderRadius(UiRadius.LARGE)
                 .shadow({
                   radius: UiShadow.SOFT_RADIUS,
                   color: UiShadow.SOFT_COLOR,
@@ -249,12 +222,15 @@ struct HomePage {
         left: pageHorizontalPadding(),
         right: pageHorizontalPadding(),
         top: pageVerticalPadding(),
-        bottom: pageVerticalPadding() + 12
+        bottom: pageVerticalPadding() + (isCompactLayout() ? 24 : 12)
       })
       .alignItems(HorizontalAlign.Start)
     }
     .width('100%')
     .height('100%')
+    .align(Alignment.Top)
+    .scrollBar(BarState.Off)
+    .edgeEffect(EdgeEffect.Spring)
     .linearGradient({
       angle: 180,
       colors: [
@@ -265,25 +241,15 @@ struct HomePage {
     })
   }
 
-  @Builder
-  stepChip(index: string, label: string) {
-    Row({ space: UiSpace.XS }) {
-      Text(index)
-        .fontSize(UiFont.BADGE)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(UiColors.BRAND)
-        .width(20)
-        .height(20)
-        .textAlign(TextAlign.Center)
-        .borderRadius(UiRadius.PILL)
-        .backgroundColor(UiColors.SURFACE_PRIMARY)
-      Text(label)
-        .fontSize(UiFont.BODY_SMALL)
-        .fontColor(UiColors.TEXT_SECONDARY)
+  formatCreatedAt(createdAt?: string): string {
+    if (createdAt === undefined || createdAt.length === 0) {
+      return '生成时间待更新'
     }
-    .padding({ left: 8, right: 12, top: 6, bottom: 6 })
-    .backgroundColor(UiColors.BRAND_SOFT)
-    .borderRadius(UiRadius.PILL)
+    // 手机端缩短 ISO 时间，避免挤占文件名
+    if (isCompactLayout() && createdAt.indexOf('T') > 0) {
+      return createdAt.replace('T', ' ').substring(0, 19)
+    }
+    return createdAt
   }
 
   async loadRecentContracts(): Promise<void> {

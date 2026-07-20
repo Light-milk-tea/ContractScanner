@@ -1,3 +1,13 @@
+import {
+  buildServiceBaseUrlCandidates,
+  DEV_HOST_LAN_IP,
+  isEmulatorRuntime,
+  isLoopbackBaseUrl,
+  networkFailureHint,
+  resolveDefaultApiBaseUrl,
+  resolveEffectiveApiBaseUrl
+} from './ServiceBaseUrl'
+
 export enum RoutePath {
   HOME = 'pages/HomePage',
   IMPORT = 'pages/ImportPage',
@@ -20,4 +30,15 @@ export enum StorageKey {
   PENDING_ROUTE_PARAMS = 'pending_route_params'
 }
 
-export const API_BASE_URL: string = 'http://127.0.0.1:3000'
+/** 按运行环境解析：模拟器优先电脑局域网 IP，其他为 http://127.0.0.1:3000 */
+export const API_BASE_URL: string = resolveDefaultApiBaseUrl()
+
+export {
+  buildServiceBaseUrlCandidates,
+  DEV_HOST_LAN_IP,
+  isEmulatorRuntime,
+  isLoopbackBaseUrl,
+  networkFailureHint,
+  resolveDefaultApiBaseUrl,
+  resolveEffectiveApiBaseUrl
+}

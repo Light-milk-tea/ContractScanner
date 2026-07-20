@@ -1,4 +1,4 @@
-import { UiColors, UiFont, UiRadius, UiShadow, UiSpace } from '../common/ui/DesignTokens'
+import { UiColors, UiFont, UiSpace } from '../common/ui/DesignTokens'
 
 export enum EmptyStateType {
   EMPTY = 'empty',
@@ -16,13 +16,9 @@ export struct EmptyState {
   build() {
     Column({ space: UiSpace.MD }) {
       Text(this.iconGlyph())
-        .fontSize(28)
+        .fontSize(22)
+        .fontWeight(FontWeight.Bold)
         .fontColor(this.badgeFontColor())
-        .width(48)
-        .height(48)
-        .textAlign(TextAlign.Center)
-        .borderRadius(UiRadius.PILL)
-        .backgroundColor(this.badgeBackgroundColor())
 
       Text(this.title)
         .fontSize(UiFont.SECTION_TITLE)
@@ -34,7 +30,7 @@ export struct EmptyState {
           .fontSize(UiFont.BODY)
           .fontColor(UiColors.TEXT_SECONDARY)
           .width('100%')
-          .lineHeight(22)
+          .lineHeight(24)
       }
 
       if (this.hint.length > 0) {
@@ -47,15 +43,7 @@ export struct EmptyState {
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .padding(UiSpace.XL)
-    .borderRadius(UiRadius.LARGE)
-    .backgroundColor(this.cardBackgroundColor())
-    .shadow({
-      radius: UiShadow.SOFT_RADIUS,
-      color: UiShadow.SOFT_COLOR,
-      offsetX: 0,
-      offsetY: 4
-    })
+    .padding({ top: UiSpace.LG, bottom: UiSpace.LG })
   }
 
   iconGlyph(): string {
@@ -65,29 +53,7 @@ export struct EmptyState {
       case EmptyStateType.INFO:
         return 'i'
       default:
-        return '◦'
-    }
-  }
-
-  cardBackgroundColor(): string {
-    switch (this.stateType) {
-      case EmptyStateType.ERROR:
-        return '#FFF8F7'
-      case EmptyStateType.INFO:
-        return UiColors.SURFACE_ACCENT
-      default:
-        return UiColors.SURFACE_PRIMARY
-    }
-  }
-
-  badgeBackgroundColor(): string {
-    switch (this.stateType) {
-      case EmptyStateType.ERROR:
-        return UiColors.DANGER_SOFT
-      case EmptyStateType.INFO:
-        return UiColors.BRAND_SOFT
-      default:
-        return UiColors.SURFACE_SECONDARY
+        return '·'
     }
   }
 

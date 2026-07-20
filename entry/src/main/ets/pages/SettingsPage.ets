@@ -1,6 +1,12 @@
 import { common } from '@kit.AbilityKit'
 import { back } from '../app/AppRouter'
-import { API_BASE_URL } from '../common/constants'
+import {
+  API_BASE_URL,
+  DEV_HOST_LAN_IP,
+  isEmulatorRuntime,
+  isLoopbackBaseUrl,
+  resolveDefaultApiBaseUrl
+} from '../common/constants'
 import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
 import { GhostButton, PrimaryButton, SegmentChip } from '../components/ActionButtons'
 import { PageScaffold } from '../components/PageScaffold'
@@ -8,6 +14,7 @@ import { SectionHeader } from '../components/SectionHeader'
 import { SurfaceCard } from '../components/SurfaceCard'
 import { DemoFaultMode } from '../model/enums/DemoMode'
 import { PrivacyGuardService } from '../services/ability/PrivacyGuardService'
+import { ServiceHealthProbe } from '../services/api/ServiceHealthProbe'
 import { UserSettingsService } from '../services/storage/UserSettingsService'
 
 const API_KEY_MIN_LENGTH: number = 16
@@ -29,9 +36,11 @@ struct SettingsPage {
   @State privacyGuardHint: string = ''
   @State demoFaultMode: DemoFaultMode = DemoFaultMode.NONE
   @State demoFaultHint: string = ''
+  @State isProbingService: boolean = false
 
   userSettingsService: UserSettingsService = new UserSettingsService()
   privacyGuardService: PrivacyGuardService = new PrivacyGuardService()
+  serviceHealthProbe: ServiceHealthProbe = new ServiceHealthProbe()
 
   aboutToAppear(): void {
     this.loadServiceBaseUrl()
@@ -55,12 +64,14 @@ struct SettingsPage {
             Column({ space: UiSpace.MD }) {
               SectionHeader({
                 title: '服务地址',
-                description: '真机联调请填写电脑局域网 IP。'
+                description: isEmulatorRuntime()
+                  ? `模拟器优先走电脑局域网 IP（当前 ${DEV_HOST_LAN_IP}）。`
+                  : '真机联调请填写电脑局域网 IP。'
               })
 
               TextInput({
                 text: this.serviceBaseUrlInput,
-                placeholder: '例如：http://192.168.x.x:3000'
+                placeholder: `例如：http://${DEV_HOST_LAN_IP}:3000`
               })
                 .width('100%')
                 .height(44)
@@ -72,28 +83,61 @@ struct SettingsPage {
                   this.serviceBaseUrlStatusText = ''
                 })
 
-              if (this.isLoopbackBaseUrl(this.serviceBaseUrlInput)) {
+              if (!isEmulatorRuntime() && isLoopbackBaseUrl(this.serviceBaseUrlInput)) {
                 Text('当前是本机回环地址；真机请改成局域网 IP。')
                   .fontSize(UiFont.CAPTION)
                   .fontColor(UiColors.DANGER)
               }
 
-              Row({ space: UiSpace.SM }) {
-                PrimaryButton({
-                  label: '保存地址',
-                  onTap: () => {
-                    this.saveServiceBaseUrl()
-                  }
-                })
-                GhostButton({
-                  label: '恢复默认',
-                  onTap: () => {
-                    this.clearServiceBaseUrl()
-                  }
-                })
+              if (isEmulatorRuntime()) {
+                Text('若连不上：把模拟器代理设为「无代理」。代理下 HTTP 非 80 端口常会失败。')
+                  .fontSize(UiFont.CAPTION)
+                  .fontColor(UiColors.WARNING)
               }
 
-              Text(this.serviceBaseUrlStatusText.length > 0 ? this.serviceBaseUrlStatusText : '默认地址仅适用于本机调试。')
+              Flex({
+                wrap: FlexWrap.Wrap,
+                justifyContent: FlexAlign.Start,
+                alignItems: ItemAlign.Center
+              }) {
+                Row() {
+                  PrimaryButton({
+                    label: '保存地址',
+                    onTap: () => {
+                      this.saveServiceBaseUrl()
+                    }
+                  })
+                }
+                .margin({ right: UiSpace.SM, bottom: UiSpace.SM })
+
+                Row() {
+                  GhostButton({
+                    label: this.isProbingService ? '检测中...' : '检测连通',
+                    isEnabled: !this.isProbingService,
+                    onTap: () => {
+                      this.probeServiceBaseUrl()
+                    }
+                  })
+                }
+                .margin({ right: UiSpace.SM, bottom: UiSpace.SM })
+
+                Row() {
+                  GhostButton({
+                    label: '恢复默认',
+                    onTap: () => {
+                      this.clearServiceBaseUrl()
+                    }
+                  })
+                }
+                .margin({ right: UiSpace.SM, bottom: UiSpace.SM })
+              }
+              .width('100%')
+
+              Text(this.serviceBaseUrlStatusText.length > 0
+                ? this.serviceBaseUrlStatusText
+                : (isEmulatorRuntime()
+                  ? `默认优先 ${DEV_HOST_LAN_IP}:3000，并自动回退探测 10.0.2.2。`
+                  : '默认地址仅适用于本机调试。'))
                 .fontSize(UiFont.CAPTION)
                 .fontColor(this.serviceBaseUrlStatusText.length > 0 ? this.serviceBaseUrlStatusColor : UiColors.TEXT_SECONDARY)
             }
@@ -341,10 +385,18 @@ struct SettingsPage {
       return
     }
 
-    const savedBaseUrl = await this.userSettingsService.loadServiceBaseUrl(hostContext, API_BASE_URL)
+    const defaultBaseUrl = resolveDefaultApiBaseUrl()
+    const savedBaseUrl = await this.userSettingsService.loadServiceBaseUrl(hostContext, defaultBaseUrl)
     this.serviceBaseUrlInput = savedBaseUrl
-    this.serviceBaseUrlStatusText = savedBaseUrl === API_BASE_URL ? '当前使用默认服务地址。' : '已读取本地保存的服务地址。'
-    this.serviceBaseUrlStatusColor = savedBaseUrl === API_BASE_URL ? '#2E6BE6' : '#2A8F5B'
+    if (savedBaseUrl === defaultBaseUrl) {
+      this.serviceBaseUrlStatusText = isEmulatorRuntime()
+        ? `当前使用模拟器自动联网地址（${DEV_HOST_LAN_IP}:3000）。`
+        : '当前使用默认服务地址。'
+      this.serviceBaseUrlStatusColor = '#2E6BE6'
+      return
+    }
+    this.serviceBaseUrlStatusText = '已读取本地保存的服务地址。'
+    this.serviceBaseUrlStatusColor = '#2A8F5B'
   }
 
   async loadApiKey(): Promise<void> {
@@ -490,13 +542,38 @@ struct SettingsPage {
     }
 
     await this.userSettingsService.clearServiceBaseUrl(hostContext)
-    this.serviceBaseUrlInput = API_BASE_URL
-    this.serviceBaseUrlStatusText = '已恢复默认服务地址。'
+    const defaultBaseUrl = resolveDefaultApiBaseUrl()
+    this.serviceBaseUrlInput = defaultBaseUrl
+    this.serviceBaseUrlStatusText = isEmulatorRuntime()
+      ? `已恢复模拟器自动联网地址（http://${DEV_HOST_LAN_IP}:3000）。`
+      : '已恢复默认服务地址。'
     this.serviceBaseUrlStatusColor = '#2E6BE6'
   }
 
-  isLoopbackBaseUrl(baseUrl: string): boolean {
-    return baseUrl.indexOf('127.0.0.1') >= 0 || baseUrl.indexOf('localhost') >= 0
+  async probeServiceBaseUrl(): Promise<void> {
+    if (this.isProbingService) {
+      return
+    }
+    this.isProbingService = true
+    this.serviceBaseUrlStatusText = '正在检测服务连通性...'
+    this.serviceBaseUrlStatusColor = '#2E6BE6'
+    try {
+      const probeResult = await this.serviceHealthProbe.findReachableBaseUrl(this.serviceBaseUrlInput)
+      if (!probeResult.ok) {
+        this.serviceBaseUrlStatusText = probeResult.message
+        this.serviceBaseUrlStatusColor = '#C0392B'
+        return
+      }
+      this.serviceBaseUrlInput = probeResult.baseUrl
+      this.serviceBaseUrlStatusText = probeResult.message
+      this.serviceBaseUrlStatusColor = '#2A8F5B'
+      const hostContext = this.getHostContext()
+      if (hostContext !== undefined) {
+        await this.userSettingsService.saveServiceBaseUrl(hostContext, probeResult.baseUrl)
+      }
+    } finally {
+      this.isProbingService = false
+    }
   }
 
   async togglePrivacyGuard(): Promise<void> {

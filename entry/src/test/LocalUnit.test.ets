@@ -1,6 +1,12 @@
 import { describe, it, expect } from '@ohos/hypium'
 
 import { AppError, ErrorCode } from '../main/ets/common/errors'
+import {
+  buildServiceBaseUrlCandidatesFor,
+  DEV_HOST_LAN_IP,
+  resolveEffectiveApiBaseUrlFor,
+  rewriteLoopbackToHost
+} from '../main/ets/common/ServiceBaseUrl'
 import { AnalyzeStatus } from '../main/ets/model/enums/AnalyzeStatus'
 import { DemoFaultMode, DemoSamplePreset } from '../main/ets/model/enums/DemoMode'
 import { RiskLevel } from '../main/ets/model/enums/RiskLevel'
@@ -17,11 +23,51 @@ export default function localUnitTest() {
       vm.updateStatus(AnalyzeStatus.OCR_RUNNING)
       expect(vm.status).assertEqual(AnalyzeStatus.OCR_RUNNING)
       expect(vm.progressText).assertEqual('正在识别文字')
-      expect(vm.progressValue).assertEqual(35)
+      expect(vm.stageIndex()).assertEqual(1)
+      // 状态切换不应瞬间抬高进度
+      expect(vm.progressValue).assertEqual(0)
+
+      vm.updateStatus(AnalyzeStatus.LLM_RUNNING)
+      expect(vm.stageIndex()).assertEqual(2)
+      expect(vm.progressValue).assertEqual(0)
 
       vm.updateStatus(AnalyzeStatus.SUCCESS)
       expect(vm.canGoResult()).assertTrue()
       expect(vm.shouldStopPolling()).assertTrue()
+      expect(vm.progressValue).assertEqual(100)
+    })
+
+    it('should_ease_progress_during_llm_without_reaching_100', 0, () => {
+      const vm = new AnalyzeVM()
+
+      vm.updateStatus(AnalyzeStatus.LLM_RUNNING)
+      expect(vm.progressValue).assertEqual(0)
+      expect(vm.tickProgress()).assertTrue()
+      expect(vm.progressValue).assertEqual(3)
+
+      const beforeTick: number = vm.progressValue
+      expect(vm.tickProgress()).assertTrue()
+      expect(vm.progressValue > beforeTick).assertTrue()
+      expect(vm.progressValue - beforeTick < 1.5).assertTrue()
+
+      // 同一状态再次 update 不应改写已缓动进度
+      vm.progressValue = 70
+      vm.updateStatus(AnalyzeStatus.LLM_RUNNING)
+      expect(vm.progressValue).assertEqual(70)
+
+      for (let i = 0; i < 500; i++) {
+        vm.tickProgress()
+      }
+      expect(vm.progressValue <= 97).assertTrue()
+      expect(vm.progressValue >= 94).assertTrue()
+
+      // 末段仍保持可见步进，不应趋近于 0
+      vm.progressValue = 95
+      const lateBefore: number = vm.progressValue
+      expect(vm.tickProgress()).assertTrue()
+      expect(vm.progressValue - lateBefore >= 0.03).assertTrue()
+
+      vm.updateStatus(AnalyzeStatus.SUCCESS)
       expect(vm.progressValue).assertEqual(100)
     })
 
@@ -90,6 +136,24 @@ export default function localUnitTest() {
       expect(clause.riskLevel).assertEqual(RiskLevel.RED)
       expect(clause.anchors.page).assertEqual(2)
       expect(clause.anchors.paragraph).assertEqual(3)
+    })
+  })
+
+  describe('ServiceBaseUrlTest', () => {
+    it('should_map_loopback_and_build_probe_candidates', 0, () => {
+      expect(rewriteLoopbackToHost('http://127.0.0.1:3000', DEV_HOST_LAN_IP))
+        .assertEqual(`http://${DEV_HOST_LAN_IP}:3000`)
+      expect(resolveEffectiveApiBaseUrlFor('http://127.0.0.1:3000', true))
+        .assertEqual(`http://${DEV_HOST_LAN_IP}:3000`)
+      expect(resolveEffectiveApiBaseUrlFor('http://10.0.2.2:3000', true))
+        .assertEqual(`http://${DEV_HOST_LAN_IP}:3000`)
+      expect(resolveEffectiveApiBaseUrlFor('http://127.0.0.1:3000', false))
+        .assertEqual('http://127.0.0.1:3000')
+
+      const candidates = buildServiceBaseUrlCandidatesFor('http://10.0.2.2:3000', true)
+      expect(candidates.length >= 2).assertTrue()
+      expect(candidates[0]).assertEqual('http://10.0.2.2:3000')
+      expect(candidates.indexOf(`http://${DEV_HOST_LAN_IP}:3000`) >= 0).assertTrue()
     })
   })
 

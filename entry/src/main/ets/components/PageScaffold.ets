@@ -1,5 +1,12 @@
-import { contentMaxWidth, pageHorizontalPadding, pageVerticalPadding } from '../common/ui/LayoutHelpers'
-import { LayoutMetrics, UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
+import {
+  contentMaxWidth,
+  isCompactLayout,
+  pageHorizontalPadding,
+  pageTitleFontSize,
+  pageVerticalPadding,
+  sectionGap
+} from '../common/ui/LayoutHelpers'
+import { UiColors, UiFont, UiSpace } from '../common/ui/DesignTokens'
 
 @Component
 export struct PageScaffold {
@@ -12,20 +19,15 @@ export struct PageScaffold {
 
   build() {
     Scroll() {
-      Column({ space: UiSpace.XL }) {
+      Column({ space: sectionGap() }) {
         if (this.backText.length > 0 || this.title.length > 0) {
           Column({ space: UiSpace.MD }) {
             if (this.backText.length > 0) {
-              Row({ space: UiSpace.SM }) {
+              Row({ space: UiSpace.XS }) {
                 Text('‹')
-                  .fontSize(28)
+                  .fontSize(26)
                   .fontWeight(FontWeight.Medium)
                   .fontColor(UiColors.BRAND)
-                  .width(LayoutMetrics.NAV_ICON_SIZE)
-                  .height(LayoutMetrics.NAV_ICON_SIZE)
-                  .textAlign(TextAlign.Center)
-                  .borderRadius(UiRadius.PILL)
-                  .backgroundColor(UiColors.SURFACE_PRIMARY)
                   .onClick(() => {
                     if (this.onBack !== undefined) {
                       this.onBack()
@@ -42,29 +44,33 @@ export struct PageScaffold {
                   })
               }
               .width('100%')
+              .justifyContent(FlexAlign.Start)
               .alignItems(VerticalAlign.Center)
             }
 
             if (this.title.length > 0) {
               Column({ space: UiSpace.SM }) {
                 Text(this.title)
-                  .fontSize(UiFont.PAGE_TITLE)
+                  .fontSize(pageTitleFontSize())
                   .fontWeight(FontWeight.Bold)
                   .fontColor(UiColors.TEXT_PRIMARY)
+                  .textAlign(TextAlign.Center)
+                  .width('100%')
 
                 if (this.description.length > 0) {
                   Text(this.description)
-                    .fontSize(UiFont.BODY)
+                    .fontSize(isCompactLayout() ? UiFont.BODY_SMALL : UiFont.BODY)
                     .fontColor(UiColors.TEXT_SECONDARY)
-                    .lineHeight(22)
+                    .lineHeight(isCompactLayout() ? 20 : 22)
+                    .textAlign(TextAlign.Center)
                     .width('100%')
                 }
               }
-              .alignItems(HorizontalAlign.Start)
+              .alignItems(HorizontalAlign.Center)
               .width('100%')
             }
           }
-          .alignItems(HorizontalAlign.Start)
+          .alignItems(HorizontalAlign.Center)
           .width('100%')
         }
 
@@ -76,12 +82,15 @@ export struct PageScaffold {
         left: pageHorizontalPadding(),
         right: pageHorizontalPadding(),
         top: pageVerticalPadding(),
-        bottom: pageVerticalPadding() + 12
+        bottom: pageVerticalPadding() + (isCompactLayout() ? 20 : 12)
       })
       .alignItems(HorizontalAlign.Start)
     }
     .width('100%')
     .height('100%')
+    .align(Alignment.Top)
+    .scrollBar(BarState.Off)
+    .edgeEffect(EdgeEffect.Spring)
     .linearGradient({
       angle: 180,
       colors: [
