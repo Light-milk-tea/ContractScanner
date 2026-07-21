@@ -17,3 +17,10 @@
 /apikey.txt
 /server/apikey.txt
 /server/.env
+/agent/.venv
+/agent/.venv_dl
+/agent/data/chroma
+/agent/data/raw_laws/
+/agent/apikey.txt
+/agent/**/__pycache__/
+*.pyc

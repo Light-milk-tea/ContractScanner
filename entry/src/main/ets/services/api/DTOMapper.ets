@@ -27,6 +27,7 @@ export class DTOMapper {
       riskLevel: this.mapRiskLevel(dto.riskLevel),
       riskReason: dto.riskReason,
       suggestion: dto.suggestion,
+      legalBasis: dto.legalBasis,
       anchors: this.mapClauseAnchor(dto.anchors)
     }
   }

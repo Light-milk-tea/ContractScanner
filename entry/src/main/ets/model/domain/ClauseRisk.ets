@@ -13,5 +13,7 @@ export interface ClauseRisk {
   riskLevel: RiskLevel
   riskReason: string
   suggestion?: string
+  /** Grounded legal citation from RAG; omit when unavailable. */
+  legalBasis?: string
   anchors: ClauseAnchor
 }

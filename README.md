@@ -50,16 +50,18 @@ HarmonyOS 客户端 (ArkTS / ArkUI)
         ▼
 Node.js 分析服务 (:3000)
         ├─ OCR / 文本清洗 / 条款切分
+        ├─ Python RAG 检索 (:8000)
         ├─ 大模型结构化分析（OpenAI 兼容接口）
-        └─ 风险分级与摘要输出
+        └─ 法条引用校验（无知识库依据不输出）
 ```
 
-客户端不直连大模型；模型调用统一在服务端。
+客户端不直连大模型；模型调用统一在服务端。RAG 失败时自动降级为纯 Prompt 分析。
 
 | 层级 | 技术 |
 |------|------|
 | 客户端 | HarmonyOS · ArkTS · ArkUI · Stage 模型 |
-| 服务端 | Express · TypeScript · Node.js ≥ 18 |
+| 分析服务 | Express · TypeScript · Node.js ≥ 18 |
+| 知识库 Agent | FastAPI · Chroma · Python |
 | 模型 | 默认阿里云百炼兼容接口 · `qwen-plus` |
 
 ### 仓库结构
@@ -68,6 +70,7 @@ Node.js 分析服务 (:3000)
 ContractScanner/
 ├── entry/          # 鸿蒙客户端
 ├── server/         # 分析服务
+├── agent/          # Python RAG 知识库服务
 ├── doc/            # 赛题、选题、交接与样例合同
 └── README.md
 ```
@@ -84,7 +87,18 @@ ContractScanner/
 
 ## 快速开始
 
-### 1. 启动后端
+### 1. 启动 Python RAG Agent（推荐）
+
+```bash
+cd agent
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python scripts/build_index.py
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+### 2. 启动分析服务
 
 ```bash
 cd server
@@ -92,6 +106,8 @@ cp .env.example .env   # 填入 LLM_API_KEY
 npm install
 npm run dev            # http://0.0.0.0:3000
 ```
+
+`RAG_ENABLED=true`（默认）时会请求 `http://127.0.0.1:8000`；Agent 不可用时自动降级，不阻断分析。
 
 健康检查：
 
@@ -101,7 +117,7 @@ curl http://127.0.0.1:3000/health
 
 也可用同目录或仓库根目录的 `apikey.txt` 提供密钥（勿提交到 Git）。
 
-### 2. 运行客户端
+### 3. 运行客户端
 
 1. 用 **DevEco Studio** 打开仓库根目录
 2. 运行 `entry` 模块到模拟器或真机

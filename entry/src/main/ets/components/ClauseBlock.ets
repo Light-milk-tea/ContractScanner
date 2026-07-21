@@ -15,6 +15,7 @@ export struct ClauseBlock {
   plainText: string = ''
   riskReason: string = ''
   suggestion: string = ''
+  legalBasis: string = ''
   anchorText: string = ''
   riskLevel: RiskLevel = RiskLevel.GREEN
 
@@ -51,6 +52,10 @@ export struct ClauseBlock {
       this.buildPlainSection('原文条款', this.originalText, UiColors.TEXT_PRIMARY)
       this.buildAccentSection('白话解释', this.plainText)
       this.buildPlainSection('风险原因', this.riskReason, UiColors.TEXT_PRIMARY)
+
+      if (this.legalBasis.length > 0) {
+        this.buildPlainSection('相关法条', this.legalBasis, UiColors.TEXT_PRIMARY)
+      }
 
       if (this.suggestion.length > 0) {
         this.buildPlainSection('修改建议', this.suggestion, UiColors.BRAND_STRONG)

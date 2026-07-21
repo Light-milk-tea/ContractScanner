@@ -8,6 +8,10 @@ export interface ServerEnv {
   llmApiKey: string
   llmModel: string
   llmTimeoutMs: number
+  ragEnabled: boolean
+  ragBaseUrl: string
+  ragTopK: number
+  ragTimeoutMs: number
 }
 
 const DEFAULT_PORT: number = 3000
@@ -15,6 +19,9 @@ const DEFAULT_HOST: string = '0.0.0.0'
 const DEFAULT_LLM_API_BASE_URL: string = 'https://dashscope.aliyuncs.com/compatible-mode/v1'
 const DEFAULT_LLM_MODEL: string = 'qwen-plus'
 const DEFAULT_LLM_TIMEOUT_MS: number = 45000
+const DEFAULT_RAG_BASE_URL: string = 'http://127.0.0.1:8000'
+const DEFAULT_RAG_TOP_K: number = 5
+const DEFAULT_RAG_TIMEOUT_MS: number = 8000
 const SERVER_ROOT_DIR: string = path.resolve(__dirname, '..', '..')
 const PROJECT_ROOT_DIR: string = path.resolve(SERVER_ROOT_DIR, '..')
 
@@ -101,6 +108,31 @@ function readTrimmed(rawValue: string | undefined, defaultValue: string): string
   return normalized.length > 0 ? normalized : defaultValue
 }
 
+function parseBoolean(rawValue: string | undefined, defaultValue: boolean): boolean {
+  if (rawValue === undefined || rawValue.trim().length === 0) {
+    return defaultValue
+  }
+  const normalized = rawValue.trim().toLowerCase()
+  if (normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on') {
+    return true
+  }
+  if (normalized === '0' || normalized === 'false' || normalized === 'no' || normalized === 'off') {
+    return false
+  }
+  return defaultValue
+}
+
+function parsePositiveInt(rawValue: string | undefined, defaultValue: number, minimum: number): number {
+  if (rawValue === undefined || rawValue.trim().length === 0) {
+    return defaultValue
+  }
+  const parsed = Number(rawValue)
+  if (!Number.isFinite(parsed) || parsed < minimum) {
+    return defaultValue
+  }
+  return Math.floor(parsed)
+}
+
 function readApiKeyFromFile(filePath: string): string {
   if (!existsSync(filePath)) {
     return ''
@@ -141,6 +173,10 @@ export function readServerEnv(): ServerEnv {
     llmApiBaseUrl: readTrimmed(process.env.LLM_API_BASE_URL, DEFAULT_LLM_API_BASE_URL),
     llmApiKey: resolveApiKey(),
     llmModel: readTrimmed(process.env.LLM_MODEL, DEFAULT_LLM_MODEL),
-    llmTimeoutMs: parseTimeout(process.env.LLM_TIMEOUT_MS)
+    llmTimeoutMs: parseTimeout(process.env.LLM_TIMEOUT_MS),
+    ragEnabled: parseBoolean(process.env.RAG_ENABLED, true),
+    ragBaseUrl: readTrimmed(process.env.RAG_BASE_URL, DEFAULT_RAG_BASE_URL),
+    ragTopK: parsePositiveInt(process.env.RAG_TOP_K, DEFAULT_RAG_TOP_K, 1),
+    ragTimeoutMs: parsePositiveInt(process.env.RAG_TIMEOUT_MS, DEFAULT_RAG_TIMEOUT_MS, 1000)
   }
 }

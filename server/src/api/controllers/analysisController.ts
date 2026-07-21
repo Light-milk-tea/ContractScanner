@@ -4,6 +4,9 @@ import { splitClauses } from '../../core/clause-splitter'
 import { cleanContractText } from '../../core/cleaner'
 import { analyzeContractWithLlm } from '../../core/llm'
 import { extractContractText } from '../../core/ocr'
+import { RagClient, RagHit } from '../../core/rag/client'
+import { buildRiskEngineOutput } from '../../core/risk-engine'
+import { readServerEnv } from '../../config/env'
 import { analysisTaskRepo } from '../../repository/analysisTaskRepo'
 import { AnalyzeContractRequest, validateAnalyzeContractRequest } from '../../schemas/request.schema'
 import { ErrorResponse, TaskStatusResponse, UploadContractResponse } from '../../schemas/response.schema'
@@ -24,6 +27,85 @@ function readTaskId(request: Request): string {
   return rawTaskId ?? ''
 }
 
+function mergeHits(target: RagHit[], incoming: RagHit[]): void {
+  const seen: Record<string, boolean> = {}
+  for (let i: number = 0; i < target.length; i++) {
+    seen[target[i].id] = true
+  }
+  for (let i: number = 0; i < incoming.length; i++) {
+    const hit = incoming[i]
+    if (seen[hit.id] === true) {
+      continue
+    }
+    seen[hit.id] = true
+    target.push(hit)
+  }
+}
+
+async function retrieveKnowledgeContext(
+  contractText: string,
+  clauseHints: string[],
+  businessTag: string | undefined
+): Promise<{ knowledgeBlock: string, allowedCitationBlock: string, allowedCitations: string[] }> {
+  const env = readServerEnv()
+  if (!env.ragEnabled) {
+    const empty = buildRiskEngineOutput([])
+    return {
+      knowledgeBlock: empty.knowledgeBlock,
+      allowedCitationBlock: empty.allowedCitationBlock,
+      allowedCitations: empty.allowedCitations
+    }
+  }
+
+  const client = new RagClient(env.ragBaseUrl, env.ragTimeoutMs)
+  const hits: RagHit[] = []
+  const tag = businessTag?.trim() ?? ''
+
+  try {
+    const headQuery = contractText.substring(0, Math.min(contractText.length, 800))
+    const primary = await client.retrieve({
+      query: headQuery.length > 0 ? headQuery : '合同风险条款',
+      businessTag: tag,
+      topK: env.ragTopK
+    })
+    mergeHits(hits, primary)
+
+    const hintLimit = Math.min(clauseHints.length, 8)
+    for (let i: number = 0; i < hintLimit; i++) {
+      const hint = clauseHints[i].trim()
+      if (hint.length < 8) {
+        continue
+      }
+      try {
+        const hintHits = await client.retrieve({
+          query: hint,
+          businessTag: tag,
+          topK: 1
+        })
+        mergeHits(hits, hintHits)
+      } catch (_hintError) {
+        // Ignore single-hint failures; keep primary hits.
+      }
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'unknown rag error'
+    console.warn(`[RAG] retrieve degraded: ${message}`)
+    const empty = buildRiskEngineOutput([])
+    return {
+      knowledgeBlock: empty.knowledgeBlock,
+      allowedCitationBlock: empty.allowedCitationBlock,
+      allowedCitations: empty.allowedCitations
+    }
+  }
+
+  const engine = buildRiskEngineOutput(hits, 8)
+  return {
+    knowledgeBlock: engine.knowledgeBlock,
+    allowedCitationBlock: engine.allowedCitationBlock,
+    allowedCitations: engine.allowedCitations
+  }
+}
+
 async function processAnalysisTask(taskId: string): Promise<void> {
   const taskRecord = analysisTaskRepo.getTask(taskId)
   if (taskRecord === undefined) {
@@ -36,12 +118,21 @@ async function processAnalysisTask(taskId: string): Promise<void> {
     const cleanedText = cleanContractText(ocrResult.text)
     const clauseHints = splitClauses(cleanedText)
 
+    const ragContext = await retrieveKnowledgeContext(
+      cleanedText,
+      clauseHints,
+      taskRecord.request.businessTag
+    )
+
     analysisTaskRepo.updateStatus(taskId, 'LLM_RUNNING')
     const analysisResult = await analyzeContractWithLlm({
       taskId,
       request: taskRecord.request,
       contractText: cleanedText,
-      clauseHints
+      clauseHints,
+      knowledgeBlock: ragContext.knowledgeBlock,
+      allowedCitationBlock: ragContext.allowedCitationBlock,
+      allowedCitations: ragContext.allowedCitations
     })
 
     analysisTaskRepo.completeTask(taskId, analysisResult)
@@ -120,12 +211,12 @@ export function getAnalysisResult(request: Request, response: Response): void {
       sendError(response, 500, 'LLM_001', errorMessage)
       return
     }
-    sendError(response, 409, 'RESULT_001', `Task ${taskId} is not ready yet`)
+    sendError(response, 409, 'RESULT_001', `Task is not ready: ${status}`)
     return
   }
 
   if (task.result === undefined) {
-    sendError(response, 500, 'RESULT_001', `Task ${taskId} has no analysis result`)
+    sendError(response, 500, 'RESULT_001', `Task result missing: ${taskId}`)
     return
   }
 

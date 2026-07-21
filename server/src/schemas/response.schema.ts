@@ -24,6 +24,8 @@ export interface ClauseRiskResponse {
   riskLevel: RiskLevel
   riskReason: string
   suggestion?: string
+  /** Present only when grounded in this turn's RAG law snippets. */
+  legalBasis?: string
   anchors: ClauseAnchorResponse
 }
 

@@ -105,6 +105,7 @@ struct ClauseComparePage {
               plainText: this.currentClause.plainText,
               riskReason: this.currentClause.riskReason,
               suggestion: this.currentClause.suggestion ?? '',
+              legalBasis: this.currentClause.legalBasis ?? '',
               anchorText: this.buildAnchorText(this.currentClause),
               riskLevel: this.currentClause.riskLevel
             })

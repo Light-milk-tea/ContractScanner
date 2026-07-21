@@ -24,6 +24,7 @@ export interface MockClauseRiskData {
   riskLevel: string
   riskReason: string
   suggestion?: string
+  legalBasis?: string
   anchors: MockClauseAnchorData
 }
 
@@ -226,6 +227,7 @@ export class MockContractService {
         riskLevel: RiskLevel.RED,
         riskReason: '续约周期过长，且缺少到期提醒与二次确认机制，容易让承租方被动续签。',
         suggestion: '建议改为“到期前双方重新确认后续签”，并将提醒期缩短至 15 日左右。',
+        legalBasis: '《中华人民共和国民法典》第497条：不合理免除或减轻己方责任、加重对方责任、限制或排除对方主要权利的格式条款无效。',
         anchors: { page: 2, paragraph: 2 }
       },
       {
@@ -236,6 +238,7 @@ export class MockContractService {
         riskLevel: RiskLevel.RED,
         riskReason: '退还条件、时间点和扣减依据均不明确，存在长期拖延或随意扣减风险。',
         suggestion: '建议明确“验收合格后 5-10 个工作日内全额退还”，并列出可扣减情形。',
+        legalBasis: '《中华人民共和国民法典》第509条：当事人应按约定全面履行义务，并遵循诚信原则履行通知、协助、保密等义务。',
         anchors: { page: 3, paragraph: 1 }
       },
       {

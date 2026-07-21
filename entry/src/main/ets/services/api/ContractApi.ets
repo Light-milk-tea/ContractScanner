@@ -37,6 +37,7 @@ export interface ClauseRiskDTO {
   riskLevel: string
   riskReason: string
   suggestion?: string
+  legalBasis?: string
   anchors: ClauseAnchorDTO
 }
 
@@ -129,6 +130,7 @@ export class ContractApi {
         riskLevel: mockClause.riskLevel,
         riskReason: mockClause.riskReason,
         suggestion: mockClause.suggestion,
+        legalBasis: mockClause.legalBasis,
         anchors: anchors
       }
       clauses.push(clause)

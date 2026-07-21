@@ -1,6 +1,7 @@
 import { readServerEnv } from '../../config/env'
 import { AnalyzeContractRequest } from '../../schemas/request.schema'
 import { AnalysisResultResponse, ClauseRiskResponse, RiskLevel, RiskStatsResponse } from '../../schemas/response.schema'
+import { buildRiskEngineOutput, sanitizeLegalBasis } from '../risk-engine'
 
 interface OpenAiCompatibleMessage {
   content?: string | OpenAiCompatibleContentPart[]
@@ -26,6 +27,9 @@ export interface LlmAnalyzeInput {
   request: AnalyzeContractRequest
   contractText: string
   clauseHints: string[]
+  knowledgeBlock?: string
+  allowedCitationBlock?: string
+  allowedCitations?: string[]
 }
 
 interface ResolvedLlmConfig {
@@ -50,25 +54,37 @@ function resolveConfig(request: AnalyzeContractRequest): ResolvedLlmConfig {
 function buildSystemPrompt(): string {
   return [
     '你是一名中文合同审查助手。',
-    '请基于给定合同内容，输出结构化 JSON。',
+    '请基于给定合同内容与检索到的知识，输出结构化 JSON。',
     '不要输出 markdown，不要输出额外解释，不要使用代码块。',
     '输出字段必须包含：overallSummary, signBeforeChecklist, clauses。',
     'clauses 中每一项必须包含：title, originalText, plainText, riskLevel, riskReason, suggestion。',
+    'clauses 中可包含可选字段 legalBasis。',
     'riskLevel 只能取 RED、YELLOW、GREEN。',
-    'signBeforeChecklist 需要给出 3 条签署前检查建议。'
+    'signBeforeChecklist 需要给出 3 条签署前检查建议。',
+    '硬约束：',
+    '1) originalText 必须来自给定合同原文（可截取关键句段），不得编造未出现的合同原文。',
+    '2) legalBasis 只能引用「允许引用的法律条例」列表中的原文；列表为空或不相关时必须输出空字符串或不输出该字段。',
+    '3) 不得编造法律名称、条号或条文；不得把风险规则标题伪装成法条。',
+    '4) 有知识库法条依据时优先填写 legalBasis；无依据则不要填写。'
   ].join('\n')
 }
 
 function buildUserPrompt(input: LlmAnalyzeInput): string {
   const businessTag = input.request.businessTag?.trim().length ? input.request.businessTag : '通用合同'
   const clausePreview = input.clauseHints.join('\n')
+  const knowledgeBlock = input.knowledgeBlock?.trim().length
+    ? input.knowledgeBlock.trim()
+    : '（本次未检索到可用知识）'
+  const allowedCitationBlock = input.allowedCitationBlock?.trim().length
+    ? input.allowedCitationBlock.trim()
+    : '（无：本次不得输出任何具体法律条例）'
 
   return [
     `合同名称：${input.request.fileName}`,
     `文件类型：${input.request.fileType}`,
     `业务标签：${businessTag}`,
     '请从以下合同内容中，给出整体摘要、签署前检查清单，以及 3-6 条重点条款分析。',
-    '每条条款需要包含原文、白话解释、风险等级、风险原因、修改建议。',
+    '每条条款需要包含原文、白话解释、风险等级、风险原因、修改建议；若有允许引用的法条可填写 legalBasis。',
     '返回格式示例：',
     JSON.stringify({
       overallSummary: '一句到两句中文摘要',
@@ -80,10 +96,15 @@ function buildUserPrompt(input: LlmAnalyzeInput): string {
           plainText: '白话解释',
           riskLevel: 'RED',
           riskReason: '风险原因',
-          suggestion: '修改建议'
+          suggestion: '修改建议',
+          legalBasis: '《中华人民共和国民法典》第497条：……'
         }
       ]
     }),
+    '检索到的风险知识（可参考，但法条只能引用下一节允许列表）：',
+    knowledgeBlock,
+    '允许引用的法律条例（legalBasis 只能从这里选，否则留空）：',
+    allowedCitationBlock,
     '合同内容如下：',
     input.contractText,
     '条款切片参考：',
@@ -228,17 +249,44 @@ function normalizeChecklist(rawChecklist: unknown): string[] {
   ]
 }
 
-function toClauseRisks(rawClauses: unknown, clauseHints: string[]): ClauseRiskResponse[] {
+function pickOriginalText(rawText: unknown, contractText: string, fallback: string): string {
+  if (typeof rawText !== 'string' || rawText.trim().length === 0) {
+    return fallback
+  }
+  const candidate = rawText.trim()
+  if (contractText.indexOf(candidate) >= 0) {
+    return candidate
+  }
+  // Allow near-substring: if a long enough slice of candidate appears in contract
+  if (candidate.length >= 12) {
+    const probe = candidate.substring(0, Math.min(candidate.length, 40))
+    if (contractText.indexOf(probe) >= 0) {
+      return candidate
+    }
+  }
+  return fallback
+}
+
+function toClauseRisks(
+  rawClauses: unknown,
+  clauseHints: string[],
+  contractText: string,
+  allowedCitations: string[]
+): ClauseRiskResponse[] {
   const inputClauses = Array.isArray(rawClauses) ? rawClauses : []
   const clauses: ClauseRiskResponse[] = []
 
   for (let i: number = 0; i < inputClauses.length; i++) {
     const current = inputClauses[i] as Record<string, unknown>
     const hintText = clauseHints[i] ?? `合同条款 ${i + 1}`
+    const legalBasis = sanitizeLegalBasis(
+      typeof current.legalBasis === 'string' ? current.legalBasis : undefined,
+      allowedCitations
+    )
     const clause: ClauseRiskResponse = {
       clauseId: `llm-clause-${String(i + 1).padStart(3, '0')}`,
       title: typeof current.title === 'string' && current.title.trim().length > 0 ? current.title.trim() : `重点条款 ${i + 1}`,
-      originalText: typeof current.originalText === 'string' && current.originalText.trim().length > 0 ? current.originalText.trim() : hintText,
+      originalText: pickOriginalText(current.originalText, contractText, hintText),
       plainText: typeof current.plainText === 'string' && current.plainText.trim().length > 0 ? current.plainText.trim() : '该条款需要结合上下文进一步审阅。',
       riskLevel: normalizeRiskLevel(typeof current.riskLevel === 'string' ? current.riskLevel : undefined, i),
       riskReason: typeof current.riskReason === 'string' && current.riskReason.trim().length > 0 ? current.riskReason.trim() : '模型未给出明确原因，建议人工复核。',
@@ -246,6 +294,9 @@ function toClauseRisks(rawClauses: unknown, clauseHints: string[]): ClauseRiskRe
       anchors: {
         paragraph: i + 1
       }
+    }
+    if (legalBasis !== undefined) {
+      clause.legalBasis = legalBasis
     }
     clauses.push(clause)
     if (clauses.length >= 6) {
@@ -297,7 +348,8 @@ function buildRiskStats(clauses: ClauseRiskResponse[]): RiskStatsResponse {
 
 function normalizeResult(input: LlmAnalyzeInput, rawContent: string): AnalysisResultResponse {
   const parsed = JSON.parse(extractJsonObject(rawContent)) as Record<string, unknown>
-  const clauses = toClauseRisks(parsed.clauses, input.clauseHints)
+  const allowedCitations = input.allowedCitations ?? []
+  const clauses = toClauseRisks(parsed.clauses, input.clauseHints, input.contractText, allowedCitations)
 
   return {
     taskId: input.taskId,
@@ -319,6 +371,14 @@ export async function analyzeContractWithLlm(input: LlmAnalyzeInput): Promise<An
   // #endregion
   if (config.apiKey.length === 0) {
     throw new Error('缺少可用的 LLM_API_KEY，请在服务端环境变量或客户端设置中提供 API Key')
+  }
+
+  // Defensive: if caller forgot risk-engine shaping, keep empty allowed citations.
+  if (input.allowedCitations === undefined) {
+    const emptyEngine = buildRiskEngineOutput([])
+    input.knowledgeBlock = emptyEngine.knowledgeBlock
+    input.allowedCitationBlock = emptyEngine.allowedCitationBlock
+    input.allowedCitations = emptyEngine.allowedCitations
   }
 
   const controller = new AbortController()
@@ -365,5 +425,5 @@ export async function analyzeContractWithLlm(input: LlmAnalyzeInput): Promise<An
 }
 
 export function describeLlmStage(): string {
-  return 'LLM stage calls OpenAI-compatible chat completions for B17'
+  return 'LLM stage calls OpenAI-compatible chat completions with optional RAG context'
 }
