@@ -49,6 +49,7 @@ struct ImportPage {
   @State demoFaultMode: DemoFaultMode = DemoFaultMode.NONE
   @State demoModeNoticeText: string = '当前未启用异常演示模式。'
   @State demoModeNoticeColor: string = UiColors.TEXT_SECONDARY
+  @State showMoreImportOptions: boolean = false
 
   fileImportService: FileImportService = new FileImportService()
   serviceHealthProbe: ServiceHealthProbe = new ServiceHealthProbe()
@@ -74,7 +75,7 @@ struct ImportPage {
           Column({ space: UiSpace.MD }) {
             SectionHeader({
               title: '导入方式',
-              description: '选择合同来源后继续选择文件。',
+              description: '先选择合同来源，再通过下方按钮导入。',
               alignCenter: false
             })
             Flex({
@@ -88,7 +89,7 @@ struct ImportPage {
                   selected: this.importVM.selectedSource === 'CAMERA',
                   isEnabled: !this.isSubmitting,
                   onTap: () => {
-                    void this.handleSourceSelection('CAMERA')
+                    this.handleSourceSelection('CAMERA')
                   }
                 })
               }
@@ -100,7 +101,7 @@ struct ImportPage {
                   selected: this.importVM.selectedSource === 'GALLERY',
                   isEnabled: !this.isSubmitting,
                   onTap: () => {
-                    void this.handleSourceSelection('GALLERY')
+                    this.handleSourceSelection('GALLERY')
                   }
                 })
               }
@@ -112,7 +113,7 @@ struct ImportPage {
                   selected: this.importVM.selectedSource === 'LOCAL_FILE',
                   isEnabled: !this.isSubmitting,
                   onTap: () => {
-                    void this.handleSourceSelection('LOCAL_FILE')
+                    this.handleSourceSelection('LOCAL_FILE')
                   }
                 })
               }
@@ -128,94 +129,109 @@ struct ImportPage {
           Column({ space: UiSpace.MD }) {
             SectionHeader({
               title: '选择文件',
-              description: '支持常见合同格式；也可直接使用演示样例。',
+              description: this.importActionDescription(),
               alignCenter: false
             })
 
             PrimaryButton({
-              label: '选择文件',
+              label: this.importActionLabel(),
               isEnabled: !this.isSubmitting,
               fillWidth: true,
               onTap: () => {
-                void this.selectLocalFile()
+                void this.openSelectedSourcePicker()
               }
             })
 
-            Column({ space: UiSpace.SM }) {
-              Text('演示样例')
-                .fontSize(UiFont.CAPTION)
-                .fontColor(UiColors.TEXT_TERTIARY)
-              Flex({
-                wrap: FlexWrap.Wrap,
-                justifyContent: FlexAlign.Start,
-                alignItems: ItemAlign.Center
-              }) {
-                Row() {
-                  SegmentChip({
-                    label: '高风险样例',
-                    selected: this.selectedDemoPreset === DemoSamplePreset.HIGH_RISK,
-                    isEnabled: !this.isSubmitting,
-                    onTap: () => {
-                      this.applyDemoSample(DemoSamplePreset.HIGH_RISK)
-                    }
-                  })
-                }
-                .margin({ right: UiSpace.SM, bottom: UiSpace.SM })
-
-                Row() {
-                  SegmentChip({
-                    label: '低风险样例',
-                    selected: this.selectedDemoPreset === DemoSamplePreset.LOW_RISK,
-                    isEnabled: !this.isSubmitting,
-                    onTap: () => {
-                      this.applyDemoSample(DemoSamplePreset.LOW_RISK)
-                    }
-                  })
-                }
-                .margin({ right: UiSpace.SM, bottom: UiSpace.SM })
-
-                Row() {
-                  GhostButton({
-                    label: '清空',
-                    isEnabled: !this.isSubmitting,
-                    onTap: () => {
-                      this.fileUri = ''
-                      this.fileName = ''
-                      this.selectedDemoPreset = DemoSamplePreset.NONE
-                      this.importVM.reset()
-                      this.errorText = ''
-                    }
-                  })
-                }
-                .margin({ right: UiSpace.SM, bottom: UiSpace.SM })
+            GhostButton({
+              label: this.showMoreImportOptions ? '收起' : '更多导入选项',
+              isEnabled: !this.isSubmitting,
+              fillWidth: true,
+              onTap: () => {
+                this.showMoreImportOptions = !this.showMoreImportOptions
               }
+            })
+
+            if (this.showMoreImportOptions) {
+              Column({ space: UiSpace.MD }) {
+                Column({ space: UiSpace.SM }) {
+                  Text('演示样例')
+                    .fontSize(UiFont.CAPTION)
+                    .fontColor(UiColors.TEXT_TERTIARY)
+                  Flex({
+                    wrap: FlexWrap.Wrap,
+                    justifyContent: FlexAlign.Start,
+                    alignItems: ItemAlign.Center
+                  }) {
+                    Row() {
+                      SegmentChip({
+                        label: '高风险样例',
+                        selected: this.selectedDemoPreset === DemoSamplePreset.HIGH_RISK,
+                        isEnabled: !this.isSubmitting,
+                        onTap: () => {
+                          this.applyDemoSample(DemoSamplePreset.HIGH_RISK)
+                        }
+                      })
+                    }
+                    .margin({ right: UiSpace.SM, bottom: UiSpace.SM })
+
+                    Row() {
+                      SegmentChip({
+                        label: '低风险样例',
+                        selected: this.selectedDemoPreset === DemoSamplePreset.LOW_RISK,
+                        isEnabled: !this.isSubmitting,
+                        onTap: () => {
+                          this.applyDemoSample(DemoSamplePreset.LOW_RISK)
+                        }
+                      })
+                    }
+                    .margin({ right: UiSpace.SM, bottom: UiSpace.SM })
+
+                    Row() {
+                      GhostButton({
+                        label: '清空',
+                        isEnabled: !this.isSubmitting,
+                        onTap: () => {
+                          this.fileUri = ''
+                          this.fileName = ''
+                          this.selectedDemoPreset = DemoSamplePreset.NONE
+                          this.importVM.reset()
+                          this.errorText = ''
+                        }
+                      })
+                    }
+                    .margin({ right: UiSpace.SM, bottom: UiSpace.SM })
+                  }
+                  .width('100%')
+                }
+                .alignItems(HorizontalAlign.Start)
+                .width('100%')
+
+                TextInput({ text: this.fileUri, placeholder: '文件 URI / 路径（可选）' })
+                  .width('100%')
+                  .height(44)
+                  .enabled(!this.isSubmitting)
+                  .backgroundColor(UiColors.SURFACE_MUTED)
+                  .borderRadius(UiRadius.MEDIUM)
+                  .padding({ left: UiSpace.MD, right: UiSpace.MD })
+                  .onChange((value: string) => {
+                    this.fileUri = value
+                    this.selectedDemoPreset = DemoSamplePreset.NONE
+                  })
+                TextInput({ text: this.fileName, placeholder: '文件名（可选）' })
+                  .width('100%')
+                  .height(44)
+                  .enabled(!this.isSubmitting)
+                  .backgroundColor(UiColors.SURFACE_MUTED)
+                  .borderRadius(UiRadius.MEDIUM)
+                  .padding({ left: UiSpace.MD, right: UiSpace.MD })
+                  .onChange((value: string) => {
+                    this.fileName = value
+                    this.selectedDemoPreset = DemoSamplePreset.NONE
+                  })
+              }
+              .alignItems(HorizontalAlign.Start)
               .width('100%')
             }
-            .alignItems(HorizontalAlign.Start)
-            .width('100%')
-
-            TextInput({ text: this.fileUri, placeholder: '文件 URI / 路径（可选）' })
-              .width('100%')
-              .height(44)
-              .enabled(!this.isSubmitting)
-              .backgroundColor(UiColors.SURFACE_MUTED)
-              .borderRadius(UiRadius.MEDIUM)
-              .padding({ left: UiSpace.MD, right: UiSpace.MD })
-              .onChange((value: string) => {
-                this.fileUri = value
-                this.selectedDemoPreset = DemoSamplePreset.NONE
-              })
-            TextInput({ text: this.fileName, placeholder: '文件名（可选）' })
-              .width('100%')
-              .height(44)
-              .enabled(!this.isSubmitting)
-              .backgroundColor(UiColors.SURFACE_MUTED)
-              .borderRadius(UiRadius.MEDIUM)
-              .padding({ left: UiSpace.MD, right: UiSpace.MD })
-              .onChange((value: string) => {
-                this.fileName = value
-                this.selectedDemoPreset = DemoSamplePreset.NONE
-              })
 
             if (this.importVM.selectedFileName.length > 0) {
               SurfaceCard({
@@ -397,9 +413,9 @@ struct ImportPage {
     return true
   }
 
-  async handleSourceSelection(source: string): Promise<void> {
+  handleSourceSelection(source: string): void {
     this.importVM.setSelectedSource(source)
-    await this.openSelectedSourcePicker()
+    this.errorText = ''
   }
 
   async openSelectedSourcePicker(): Promise<void> {
@@ -412,6 +428,26 @@ struct ImportPage {
       return
     }
     await this.selectLocalFile()
+  }
+
+  importActionLabel(): string {
+    if (this.importVM.selectedSource === 'CAMERA') {
+      return '拍照'
+    }
+    if (this.importVM.selectedSource === 'GALLERY') {
+      return '从相册选择'
+    }
+    return '选择本地文件'
+  }
+
+  importActionDescription(): string {
+    if (this.importVM.selectedSource === 'CAMERA') {
+      return '拍摄合同照片，支持常见图片格式。'
+    }
+    if (this.importVM.selectedSource === 'GALLERY') {
+      return '从相册选择合同图片。'
+    }
+    return '支持 PDF、DOCX、文本及常见图片格式。'
   }
 
   async selectLocalFile(): Promise<void> {
