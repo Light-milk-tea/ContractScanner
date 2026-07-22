@@ -19,6 +19,7 @@
 /server/.env
 /agent/.venv
 /agent/.venv_dl
+/.venv-doc
 /agent/data/chroma
 /agent/data/raw_laws/
 /agent/apikey.txt
