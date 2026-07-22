@@ -1,5 +1,5 @@
 import { common } from '@kit.AbilityKit'
-import { back, goClauseCompare, RouteParams } from '../app/AppRouter'
+import { back, goClauseCompare, goContractChat, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
 import { logError, logInfo } from '../common/logger'
@@ -142,6 +142,15 @@ struct ResultOverviewPage {
               fillWidth: true,
               onTap: () => {
                 this.exportDocReport()
+              }
+            })
+
+            PrimaryButton({
+              label: '向合同助手提问',
+              isEnabled: true,
+              fillWidth: true,
+              onTap: () => {
+                this.openContractChat()
               }
             })
 
@@ -313,6 +322,18 @@ struct ResultOverviewPage {
     params.baseUrl = this.resultVM.baseUrl
     params.clauseId = clauseId
     await goClauseCompare(this.getUIContext(), params)
+  }
+
+  async openContractChat(): Promise<void> {
+    logInfo(`Open contract chat: taskId=${this.resultVM.taskId}, demo=${this.isUsingDemoResult}`, 'ResultOverviewPage')
+    const params: RouteParams = new RouteParams()
+    if (this.isUsingDemoResult && !ContractApi.isMockTask(this.resultVM.taskId)) {
+      params.taskId = ContractApi.buildMockTaskId()
+    } else {
+      params.taskId = this.resultVM.taskId
+    }
+    params.baseUrl = this.resultVM.baseUrl
+    await goContractChat(this.getUIContext(), params)
   }
 
   async exportDocReport(): Promise<void> {

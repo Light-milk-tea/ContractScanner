@@ -14,6 +14,7 @@ export enum RoutePath {
   ANALYZING = 'pages/AnalyzingPage',
   RESULT_OVERVIEW = 'pages/ResultOverviewPage',
   CLAUSE_COMPARE = 'pages/ClauseComparePage',
+  CONTRACT_CHAT = 'pages/ContractChatPage',
   SETTINGS = 'pages/SettingsPage'
 }
 

@@ -44,6 +44,12 @@ export interface MockRiskStatsData {
   green: number
 }
 
+export interface MockChatAnswerData {
+  taskId: string
+  answer: string
+  relatedClauseIds?: string[]
+}
+
 export interface MockDemoSampleData {
   preset: DemoSamplePreset
   title: string
@@ -141,6 +147,99 @@ export class MockContractService {
     return profile.preset === DemoSamplePreset.LOW_RISK
       ? MockContractService.buildLowRiskResult(taskId, profile.faultMode)
       : MockContractService.buildHighRiskResult(taskId, profile.faultMode)
+  }
+
+  static askQuestion(taskId: string, question: string): MockChatAnswerData {
+    const result = MockContractService.getAnalysisResult(taskId)
+    const normalizedQuestion = question.trim()
+    const matchedClauses: MockClauseRiskData[] = []
+    const relatedClauseIds: string[] = []
+
+    for (let i: number = 0; i < result.clauses.length; i++) {
+      const clause = result.clauses[i]
+      if (MockContractService.questionMatchesClause(normalizedQuestion, clause)) {
+        matchedClauses.push(clause)
+        relatedClauseIds.push(clause.clauseId)
+      }
+      if (matchedClauses.length >= 2) {
+        break
+      }
+    }
+
+    let answer = ''
+    if (matchedClauses.length > 0) {
+      const parts: string[] = [
+        `结合《${result.contractName}》本次分析结果，与你问题最相关的是：`
+      ]
+      for (let i: number = 0; i < matchedClauses.length; i++) {
+        const clause = matchedClauses[i]
+        parts.push(
+          `${i + 1}. ${clause.title}（${clause.riskLevel}）：${clause.plainText}` +
+            (clause.suggestion !== undefined && clause.suggestion.length > 0
+              ? ` 建议：${clause.suggestion}`
+              : '')
+        )
+      }
+      answer = parts.join('\n')
+    } else if (MockContractService.containsAny(normalizedQuestion, ['摘要', '总结', '整体', '概况', '风险'])) {
+      answer = [
+        `这份《${result.contractName}》的整体结论：${result.overallSummary}`,
+        `风险统计：红 ${result.riskStats.red} / 黄 ${result.riskStats.yellow} / 绿 ${result.riskStats.green}。`,
+        `签署前建议优先确认：${result.signBeforeChecklist.join('；')}`
+      ].join('\n')
+    } else {
+      answer = [
+        `我已基于《${result.contractName}》的演示分析结果作答。`,
+        `当前摘要：${result.overallSummary}`,
+        '你可以继续追问某一条款名称（例如自动续约、押金、违约金），我会结合对应风险点解释。'
+      ].join('\n')
+    }
+
+    answer = `${answer}\n\n以上内容仅基于本次合同分析结果的解读辅助，不构成正式法律意见。（演示模式本地回答）`
+
+    const response: MockChatAnswerData = {
+      taskId: result.taskId,
+      answer: answer
+    }
+    if (relatedClauseIds.length > 0) {
+      response.relatedClauseIds = relatedClauseIds
+    }
+    return response
+  }
+
+  private static questionMatchesClause(question: string, clause: MockClauseRiskData): boolean {
+    if (question.length === 0) {
+      return false
+    }
+    if (question.indexOf(clause.title) >= 0) {
+      return true
+    }
+    const keywords: string[] = []
+    if (clause.title.indexOf('续约') >= 0 || clause.title.indexOf('续签') >= 0) {
+      keywords.push('续约', '续签', '自动续')
+    }
+    if (clause.title.indexOf('押金') >= 0) {
+      keywords.push('押金', '退还')
+    }
+    if (clause.title.indexOf('违约') >= 0) {
+      keywords.push('违约', '解约', '违约金')
+    }
+    if (clause.title.indexOf('付款') >= 0) {
+      keywords.push('付款', '支付', '服务费')
+    }
+    if (clause.title.indexOf('通知') >= 0 || clause.title.indexOf('变更') >= 0) {
+      keywords.push('通知', '变更', '邮件')
+    }
+    return MockContractService.containsAny(question, keywords)
+  }
+
+  private static containsAny(text: string, keywords: string[]): boolean {
+    for (let i: number = 0; i < keywords.length; i++) {
+      if (keywords[i].length > 0 && text.indexOf(keywords[i]) >= 0) {
+        return true
+      }
+    }
+    return false
   }
 
   static statusAtStep(currentStep: number, faultMode: DemoFaultMode): AnalyzeStatus {

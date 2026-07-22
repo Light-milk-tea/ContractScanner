@@ -8,6 +8,8 @@ export interface AnalysisTaskRecord {
   request: AnalyzeContractRequest
   createdAt: number
   status: AnalyzeStatus
+  /** Cleaned full contract text retained for post-analysis Q&A. */
+  cleanedText?: string
   result?: AnalysisResultResponse
   errorMessage?: string
 }
@@ -38,6 +40,15 @@ export class AnalysisTaskRepo {
     }
 
     task.status = status
+  }
+
+  setCleanedText(taskId: string, cleanedText: string): void {
+    const task = this.tasks.get(taskId)
+    if (task === undefined) {
+      return
+    }
+
+    task.cleanedText = cleanedText
   }
 
   completeTask(taskId: string, result: AnalysisResultResponse): void {

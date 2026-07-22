@@ -2,6 +2,7 @@ import { AnalyzeStatus } from '../../model/enums/AnalyzeStatus'
 import { DemoFaultMode, DemoSamplePreset } from '../../model/enums/DemoMode'
 import { AppError, ErrorCode } from '../../common/errors'
 import { MockContractService } from '../mock/MockContractService'
+import { http } from '@kit.NetworkKit'
 
 import { HttpClient } from './HttpClient'
 
@@ -55,6 +56,17 @@ export interface AnalysisResultDTO {
   riskStats: RiskStatsDTO
   clauses: ClauseRiskDTO[]
   generatedAt: string
+}
+
+export interface ChatHistoryMessageDTO {
+  role: string
+  content: string
+}
+
+export interface ChatAnswerDTO {
+  taskId: string
+  answer: string
+  relatedClauseIds?: string[]
 }
 
 interface JsonTaskIdResponse {
@@ -189,6 +201,52 @@ export class ContractApi {
   async getAnalysisResult(taskId: string): Promise<AnalysisResultDTO> {
     const response = await this.httpClient.get(`${ContractApi.STATUS_PATH_PREFIX}/${taskId}/result`)
     return this.parseJsonObject<AnalysisResultDTO>(response.body, '获取分析结果')
+  }
+
+  static getMockChatAnswer(taskId: string, question: string): ChatAnswerDTO {
+    const mockAnswer = MockContractService.askQuestion(taskId, question)
+    const result: ChatAnswerDTO = {
+      taskId: mockAnswer.taskId,
+      answer: mockAnswer.answer
+    }
+    if (mockAnswer.relatedClauseIds !== undefined) {
+      result.relatedClauseIds = mockAnswer.relatedClauseIds
+    }
+    return result
+  }
+
+  async askQuestion(
+    taskId: string,
+    question: string,
+    history: ChatHistoryMessageDTO[] = [],
+    apiKey?: string
+  ): Promise<ChatAnswerDTO> {
+    if (ContractApi.isMockTask(taskId) || taskId.length === 0) {
+      return ContractApi.getMockChatAnswer(taskId, question)
+    }
+
+    let requestBody = ''
+    if (apiKey !== undefined && apiKey.trim().length > 0) {
+      requestBody = JSON.stringify({
+        question: question,
+        history: history,
+        apiKey: apiKey.trim()
+      })
+    } else {
+      requestBody = JSON.stringify({
+        question: question,
+        history: history
+      })
+    }
+
+    const response = await this.httpClient.request({
+      path: `${ContractApi.STATUS_PATH_PREFIX}/${taskId}/chat`,
+      method: http.RequestMethod.POST,
+      body: requestBody,
+      readTimeout: 60000,
+      connectTimeout: 15000
+    })
+    return this.parseJsonObject<ChatAnswerDTO>(response.body, '合同问答')
   }
 
   private parseJsonObject<T>(jsonText: string, actionName: string): T {

@@ -7,6 +7,7 @@ export class RouteParams {
   taskId?: string
   baseUrl?: string
   clauseId?: string
+  seedQuestion?: string
 }
 
 function formatBusinessError(error: BusinessError): string {
@@ -73,6 +74,10 @@ export async function goResultOverview(uiContext: UIContext, params?: RouteParam
 
 export async function goClauseCompare(uiContext: UIContext, params?: RouteParams): Promise<void> {
   await push(uiContext, RoutePath.CLAUSE_COMPARE, params)
+}
+
+export async function goContractChat(uiContext: UIContext, params?: RouteParams): Promise<void> {
+  await push(uiContext, RoutePath.CONTRACT_CHAT, params)
 }
 
 export async function goSettings(uiContext: UIContext): Promise<void> {

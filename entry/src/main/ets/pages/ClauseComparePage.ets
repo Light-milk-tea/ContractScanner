@@ -1,5 +1,5 @@
 import { common } from '@kit.AbilityKit'
-import { back, RouteParams } from '../app/AppRouter'
+import { back, goContractChat, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
 import { logError, logInfo } from '../common/logger'
@@ -91,35 +91,47 @@ struct ClauseComparePage {
         }
 
         if (this.currentClause !== undefined) {
-          if (this.privacyGuardEnabled) {
-            Text('已开启隐私防窥，当前条款详情页会限制截屏和录屏。')
-              .fontSize(UiFont.CAPTION)
-              .fontColor(UiColors.BRAND)
-              .width('100%')
-          }
+          Column({ space: UiSpace.MD }) {
+            if (this.privacyGuardEnabled) {
+              Text('已开启隐私防窥，当前条款详情页会限制截屏和录屏。')
+                .fontSize(UiFont.CAPTION)
+                .fontColor(UiColors.BRAND)
+                .width('100%')
+            }
 
-          Column() {
-            ClauseBlock({
-              title: this.currentClause.title,
-              originalText: this.currentClause.originalText,
-              plainText: this.currentClause.plainText,
-              riskReason: this.currentClause.riskReason,
-              suggestion: this.currentClause.suggestion ?? '',
-              legalBasis: this.currentClause.legalBasis ?? '',
-              anchorText: this.buildAnchorText(this.currentClause),
-              riskLevel: this.currentClause.riskLevel
+            Column() {
+              ClauseBlock({
+                title: this.currentClause.title,
+                originalText: this.currentClause.originalText,
+                plainText: this.currentClause.plainText,
+                riskReason: this.currentClause.riskReason,
+                suggestion: this.currentClause.suggestion ?? '',
+                legalBasis: this.currentClause.legalBasis ?? '',
+                anchorText: this.buildAnchorText(this.currentClause),
+                riskLevel: this.currentClause.riskLevel
+              })
+            }
+            .width('100%')
+            .padding({
+              left: UiSpace.LG,
+              right: UiSpace.LG,
+              top: UiSpace.LG,
+              bottom: UiSpace.LG
+            })
+            .backgroundColor(UiColors.SURFACE_MUTED)
+            .borderRadius(UiRadius.LARGE)
+
+            GhostButton({
+              label: '针对本条提问',
+              isEnabled: true,
+              fillWidth: true,
+              onTap: () => {
+                this.openContractChatForClause()
+              }
             })
           }
           .width('100%')
           .constraintSize({ maxWidth: readingMaxWidth() })
-          .padding({
-            left: UiSpace.LG,
-            right: UiSpace.LG,
-            top: UiSpace.LG,
-            bottom: UiSpace.LG
-          })
-          .backgroundColor(UiColors.SURFACE_MUTED)
-          .borderRadius(UiRadius.LARGE)
         }
         }
         .alignItems(HorizontalAlign.Start)
@@ -239,6 +251,23 @@ struct ClauseComparePage {
     }
     this.errorText = '当前展示的是临时演示条款，真实结果仍可稍后重试拉取。'
     logInfo(`Fallback to demo clause: taskId=${demoResult.taskId}`, 'ClauseComparePage')
+  }
+
+  async openContractChatForClause(): Promise<void> {
+    if (this.currentClause === undefined) {
+      return
+    }
+    const params: RouteParams = new RouteParams()
+    if (this.isUsingDemoResult && !ContractApi.isMockTask(this.resultVM.taskId)) {
+      params.taskId = ContractApi.buildMockTaskId()
+    } else {
+      params.taskId = this.resultVM.taskId
+    }
+    params.baseUrl = this.resultVM.baseUrl
+    params.clauseId = this.currentClause.clauseId
+    params.seedQuestion = `请解释《${this.currentClause.title}》这条的风险和建议`
+    logInfo(`Open contract chat for clause: ${this.currentClause.clauseId}`, 'ClauseComparePage')
+    await goContractChat(this.getUIContext(), params)
   }
 
   async applySensitiveProtection(): Promise<void> {

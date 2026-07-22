@@ -116,6 +116,7 @@ async function processAnalysisTask(taskId: string): Promise<void> {
     analysisTaskRepo.updateStatus(taskId, 'OCR_RUNNING')
     const ocrResult = extractContractText(taskRecord.request)
     const cleanedText = cleanContractText(ocrResult.text)
+    analysisTaskRepo.setCleanedText(taskId, cleanedText)
     const clauseHints = splitClauses(cleanedText)
 
     const ragContext = await retrieveKnowledgeContext(

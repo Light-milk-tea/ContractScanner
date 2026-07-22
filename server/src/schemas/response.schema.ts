@@ -49,3 +49,9 @@ export interface ErrorResponse {
   code: string
   message: string
 }
+
+export interface ChatAnswerResponse {
+  taskId: string
+  answer: string
+  relatedClauseIds?: string[]
+}

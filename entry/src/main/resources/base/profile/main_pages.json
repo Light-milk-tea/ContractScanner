@@ -5,6 +5,7 @@
     "pages/AnalyzingPage",
     "pages/ResultOverviewPage",
     "pages/ClauseComparePage",
+    "pages/ContractChatPage",
     "pages/SettingsPage",
     "pages/Index"
   ]
