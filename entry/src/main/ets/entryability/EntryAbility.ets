@@ -9,7 +9,7 @@ const TAG = 'EntryAbility'
 
 export default class EntryAbility extends UIAbility {
   currentWindowStage?: window.WindowStage = undefined
-  pendingPageUrl: string = RoutePath.HOME
+  pendingPageUrl: string = RoutePath.MAIN_SHELL
   continueService: ContinueService = new ContinueService()
 
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
@@ -64,7 +64,7 @@ export default class EntryAbility extends UIAbility {
   resolveLaunchTarget(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     const payload = this.continueService.parseWantPayload(want)
     if (payload === undefined) {
-      this.pendingPageUrl = RoutePath.HOME
+      this.pendingPageUrl = RoutePath.MAIN_SHELL
       return
     }
 
@@ -77,7 +77,7 @@ export default class EntryAbility extends UIAbility {
 
   normalizePayload(payload: ContinuePayload, launchParam: AbilityConstant.LaunchParam): ContinuePayload {
     const normalizedPayload: ContinuePayload = {
-      pageUrl: payload.pageUrl.length > 0 ? payload.pageUrl : RoutePath.HOME,
+      pageUrl: payload.pageUrl.length > 0 ? payload.pageUrl : RoutePath.MAIN_SHELL,
       taskId: payload.taskId,
       baseUrl: payload.baseUrl,
       contractName: payload.contractName,

@@ -16,9 +16,12 @@ struct RecentContractCard {
   @LocalStorageProp('generatedAt') generatedAt: string = ''
   @LocalStorageProp('taskId') taskId: string = ''
   @LocalStorageProp('baseUrl') baseUrl: string = ''
-  @LocalStorageProp('pageUrl') pageUrl: string = 'pages/HomePage'
+  @LocalStorageProp('pageUrl') pageUrl: string = 'pages/MainShellPage'
   @LocalStorageProp('entrySource') entrySource: string = 'card'
   @LocalStorageProp('actionText') actionText: string = '打开应用'
+  @LocalStorageProp('redCount') redCount: number = 0
+  @LocalStorageProp('yellowCount') yellowCount: number = 0
+  @LocalStorageProp('greenCount') greenCount: number = 0
 
   build() {
     FormLink({
@@ -28,35 +31,38 @@ struct RecentContractCard {
       abilityName: 'EntryAbility',
       params: this.buildLinkParams()
     }) {
-      Column({ space: 10 }) {
+      Column({ space: 8 }) {
         Text(this.cardTitle)
-          .fontSize(18)
+          .fontSize(16)
           .fontWeight(FontWeight.Bold)
           .fontColor('#12151A')
 
         Text(this.contractName)
-          .fontSize(16)
+          .fontSize(14)
           .fontWeight(FontWeight.Medium)
-          .maxLines(2)
+          .maxLines(1)
           .fontColor('#12151A')
 
+        if (this.hasRiskMetrics()) {
+          Row({ space: 8 }) {
+            this.metricChip('红', `${this.redCount}`, '#D1433A', this.redCount > 0)
+            this.metricChip('黄', `${this.yellowCount}`, '#9A6B12', false)
+            this.metricChip('绿', `${this.greenCount}`, '#2A7A52', false)
+          }
+          .width('100%')
+        }
+
         Text(this.statusText)
-          .fontSize(12)
+          .fontSize(11)
           .maxLines(2)
           .fontColor('#5C6670')
 
-        if (this.generatedAt.length > 0) {
-          Text(this.generatedAt)
-            .fontSize(11)
-            .fontColor('#8A949C')
-        }
-
         Row() {
           Text(this.actionText)
-            .fontSize(12)
+            .fontSize(11)
             .fontColor('#B91C1C')
           Text('›')
-            .fontSize(12)
+            .fontSize(11)
             .fontColor('#B91C1C')
         }
         .width('100%')
@@ -65,7 +71,7 @@ struct RecentContractCard {
       .alignItems(HorizontalAlign.Start)
       .height('100%')
       .width('100%')
-      .padding(16)
+      .padding(14)
       .linearGradient({
         angle: 145,
         colors: [
@@ -77,6 +83,32 @@ struct RecentContractCard {
     }
     .width('100%')
     .height('100%')
+  }
+
+  @Builder
+  metricChip(label: string, value: string, color: string, emphasize: boolean) {
+    Column({ space: 2 }) {
+      Text(label)
+        .fontSize(10)
+        .fontColor(color)
+      Text(value)
+        .fontSize(emphasize ? 18 : 16)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(color)
+    }
+    .layoutWeight(1)
+    .padding({ top: 4, bottom: 4 })
+    .backgroundColor(emphasize ? '#FBEDEC' : '#FFFFFF')
+    .border({
+      width: emphasize ? 1.5 : 0,
+      color: emphasize ? '#D1433A' : '#00000000'
+    })
+    .borderRadius(8)
+    .alignItems(HorizontalAlign.Center)
+  }
+
+  hasRiskMetrics(): boolean {
+    return this.taskId.length > 0 && this.contractName !== '暂无最近分析结果'
   }
 
   buildLinkParams(): CardLinkParams {

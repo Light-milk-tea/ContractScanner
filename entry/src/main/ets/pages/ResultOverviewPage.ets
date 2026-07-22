@@ -40,6 +40,9 @@ struct ResultOverviewPage {
   @State resultContentOpacity: number = 0
   @State isExportingReport: boolean = false
   @State exportHint: string = ''
+  @State isRiskListExpanded: boolean = false
+
+  static readonly RISK_VISIBLE_COUNT: number = 3
 
   resultVM: ResultVM = new ResultVM()
   cacheService: CacheService = new CacheService()
@@ -172,7 +175,7 @@ struct ResultOverviewPage {
             })
 
             Column() {
-              ForEach(this.currentResult.clauses, (clause: ClauseRisk, index: number) => {
+              ForEach(this.visibleRiskClauses(), (clause: ClauseRisk, index: number) => {
                 Column() {
                   if (index > 0) {
                     Divider()
@@ -226,11 +229,21 @@ struct ResultOverviewPage {
                   })
                 }
                 .width('100%')
-              })
+              }, (clause: ClauseRisk) => clause.clauseId)
             }
             .width('100%')
             .backgroundColor(UiColors.SURFACE_MUTED)
             .borderRadius(UiRadius.LARGE)
+
+            if (this.shouldShowRiskToggle()) {
+              GhostButton({
+                label: this.riskToggleText(),
+                fillWidth: true,
+                onTap: () => {
+                  this.isRiskListExpanded = !this.isRiskListExpanded
+                }
+              })
+            }
           }
           .alignItems(HorizontalAlign.Start)
           .width('100%')
@@ -258,6 +271,7 @@ struct ResultOverviewPage {
     this.errorText = ''
     this.exportHint = ''
     this.isUsingDemoResult = false
+    this.isRiskListExpanded = false
 
     try {
       if (taskId.length === 0 || ContractApi.isMockTask(taskId)) {
@@ -411,7 +425,10 @@ struct ResultOverviewPage {
       contractName: this.currentResult.contractName,
       status: AnalyzeStatus.SUCCESS,
       createdAt: this.currentResult.generatedAt,
-      baseUrl: this.resultVM.baseUrl
+      baseUrl: this.resultVM.baseUrl,
+      redCount: this.currentResult.riskStats.red,
+      yellowCount: this.currentResult.riskStats.yellow,
+      greenCount: this.currentResult.riskStats.green
     }
     await this.cacheService.saveRecentContract(hostContext, recentContract)
     if (!this.isUsingDemoResult && this.resultVM.baseUrl.length > 0) {
@@ -461,6 +478,35 @@ struct ResultOverviewPage {
     }
     this.continueService.setMissionContinueActive(hostContext, false)
     await this.continueService.clearLastViewedResult(hostContext)
+  }
+
+  visibleRiskClauses(): ClauseRisk[] {
+    if (this.currentResult === undefined) {
+      return []
+    }
+    if (this.isRiskListExpanded ||
+      this.currentResult.clauses.length <= ResultOverviewPage.RISK_VISIBLE_COUNT) {
+      return this.currentResult.clauses
+    }
+    return this.currentResult.clauses.slice(0, ResultOverviewPage.RISK_VISIBLE_COUNT)
+  }
+
+  shouldShowRiskToggle(): boolean {
+    if (this.currentResult === undefined) {
+      return false
+    }
+    return this.currentResult.clauses.length > ResultOverviewPage.RISK_VISIBLE_COUNT
+  }
+
+  riskToggleText(): string {
+    if (this.currentResult === undefined) {
+      return '展开风险条目'
+    }
+    if (this.isRiskListExpanded) {
+      return '收起风险条目'
+    }
+    const hiddenCount = this.currentResult.clauses.length - ResultOverviewPage.RISK_VISIBLE_COUNT
+    return `展开其余 ${hiddenCount} 条`
   }
 
   riskBarColor(level: RiskLevel): string {

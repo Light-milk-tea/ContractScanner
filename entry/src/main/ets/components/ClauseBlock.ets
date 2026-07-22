@@ -18,51 +18,95 @@ export struct ClauseBlock {
   legalBasis: string = ''
   anchorText: string = ''
   riskLevel: RiskLevel = RiskLevel.GREEN
+  /** 宽屏时左原文 / 右白话+风险 */
+  splitLayout: boolean = false
 
   build() {
     Column({ space: cardInnerGap() }) {
-      Row({ space: UiSpace.MD }) {
-        Column()
-          .width(LayoutMetrics.RISK_BAR_WIDTH)
-          .height(isCompactLayout() ? 36 : 42)
-          .borderRadius(1)
-          .backgroundColor(this.riskBarColor())
+      this.buildHeader()
 
-        Column({ space: UiSpace.XS }) {
-          Text(this.title)
-            .fontSize(contractTitleFontSize())
-            .fontWeight(FontWeight.Bold)
-            .fontColor(UiColors.TEXT_PRIMARY)
-            .maxLines(3)
+      if (this.splitLayout) {
+        Row({ space: UiSpace.LG }) {
+          Scroll() {
+            Column({ space: UiSpace.MD }) {
+              this.buildPlainSection('原文条款', this.originalText, UiColors.TEXT_PRIMARY)
+            }
+            .alignItems(HorizontalAlign.Start)
             .width('100%')
-          if (this.anchorText.length > 0) {
-            Text(this.anchorText)
-              .fontSize(UiFont.CAPTION)
-              .fontColor(UiColors.TEXT_TERTIARY)
           }
+          .layoutWeight(1)
+          .scrollBar(BarState.Auto)
+          .edgeEffect(EdgeEffect.Spring)
+          .constraintSize({ maxHeight: 560 })
+
+          Scroll() {
+            Column({ space: UiSpace.MD }) {
+              this.buildAccentSection('白话解释', this.plainText)
+              this.buildPlainSection('风险原因', this.riskReason, UiColors.TEXT_PRIMARY)
+              if (this.legalBasis.length > 0) {
+                this.buildPlainSection('相关法条', this.legalBasis, UiColors.TEXT_PRIMARY)
+              }
+              if (this.suggestion.length > 0) {
+                this.buildPlainSection('修改建议', this.suggestion, UiColors.BRAND_STRONG)
+              }
+            }
+            .alignItems(HorizontalAlign.Start)
+            .width('100%')
+          }
+          .layoutWeight(1)
+          .scrollBar(BarState.Auto)
+          .edgeEffect(EdgeEffect.Spring)
+          .constraintSize({ maxHeight: 560 })
         }
-        .alignItems(HorizontalAlign.Start)
-        .layoutWeight(1)
+        .width('100%')
+        .alignItems(VerticalAlign.Top)
+      } else {
+        this.buildPlainSection('原文条款', this.originalText, UiColors.TEXT_PRIMARY)
+        this.buildAccentSection('白话解释', this.plainText)
+        this.buildPlainSection('风险原因', this.riskReason, UiColors.TEXT_PRIMARY)
 
-        RiskBadge({ riskLevel: this.riskLevel })
-      }
-      .width('100%')
-      .alignItems(VerticalAlign.Top)
+        if (this.legalBasis.length > 0) {
+          this.buildPlainSection('相关法条', this.legalBasis, UiColors.TEXT_PRIMARY)
+        }
 
-      this.buildPlainSection('原文条款', this.originalText, UiColors.TEXT_PRIMARY)
-      this.buildAccentSection('白话解释', this.plainText)
-      this.buildPlainSection('风险原因', this.riskReason, UiColors.TEXT_PRIMARY)
-
-      if (this.legalBasis.length > 0) {
-        this.buildPlainSection('相关法条', this.legalBasis, UiColors.TEXT_PRIMARY)
-      }
-
-      if (this.suggestion.length > 0) {
-        this.buildPlainSection('修改建议', this.suggestion, UiColors.BRAND_STRONG)
+        if (this.suggestion.length > 0) {
+          this.buildPlainSection('修改建议', this.suggestion, UiColors.BRAND_STRONG)
+        }
       }
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
+  }
+
+  @Builder
+  buildHeader() {
+    Row({ space: UiSpace.MD }) {
+      Column()
+        .width(LayoutMetrics.RISK_BAR_WIDTH)
+        .height(isCompactLayout() ? 36 : 42)
+        .borderRadius(1)
+        .backgroundColor(this.riskBarColor())
+
+      Column({ space: UiSpace.XS }) {
+        Text(this.title)
+          .fontSize(contractTitleFontSize())
+          .fontWeight(FontWeight.Bold)
+          .fontColor(UiColors.TEXT_PRIMARY)
+          .maxLines(3)
+          .width('100%')
+        if (this.anchorText.length > 0) {
+          Text(this.anchorText)
+            .fontSize(UiFont.CAPTION)
+            .fontColor(UiColors.TEXT_TERTIARY)
+        }
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      RiskBadge({ riskLevel: this.riskLevel })
+    }
+    .width('100%')
+    .alignItems(VerticalAlign.Top)
   }
 
   riskBarColor(): string {

@@ -6,4 +6,7 @@ export interface Contract {
   status?: AnalyzeStatus
   createdAt?: string
   baseUrl?: string
+  redCount?: number
+  yellowCount?: number
+  greenCount?: number
 }

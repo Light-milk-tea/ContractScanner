@@ -57,7 +57,7 @@ export function back(uiContext: UIContext): void {
 }
 
 export async function goHome(uiContext: UIContext): Promise<void> {
-  await replace(uiContext, RoutePath.HOME)
+  await replace(uiContext, RoutePath.MAIN_SHELL)
 }
 
 export async function goImport(uiContext: UIContext): Promise<void> {
@@ -84,6 +84,14 @@ export async function goSettings(uiContext: UIContext): Promise<void> {
   await push(uiContext, RoutePath.SETTINGS)
 }
 
+export async function goDocumentScan(uiContext: UIContext): Promise<void> {
+  await push(uiContext, RoutePath.DOCUMENT_SCAN)
+}
+
+export async function goMainShell(uiContext: UIContext): Promise<void> {
+  await replace(uiContext, RoutePath.MAIN_SHELL)
+}
+
 export async function goBackToHome(uiContext: UIContext): Promise<void> {
-  await replace(uiContext, RoutePath.HOME)
+  await replace(uiContext, RoutePath.MAIN_SHELL)
 }

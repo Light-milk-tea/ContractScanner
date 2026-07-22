@@ -4,6 +4,8 @@ import { LayoutMetrics, UiFont, UiSpace } from './DesignTokens'
 
 /** 低于该宽度（vp）按手机窄屏布局处理 */
 const COMPACT_WIDTH_VP: number = 600
+/** 达到该宽度（vp）启用平板/2in1 对照分栏 */
+const WIDE_WIDTH_VP: number = 840
 
 export function screenWidthVp(): number {
   try {
@@ -22,6 +24,10 @@ export function isCompactLayout(): boolean {
   return screenWidthVp() < COMPACT_WIDTH_VP
 }
 
+export function isWideLayout(): boolean {
+  return screenWidthVp() >= WIDE_WIDTH_VP
+}
+
 export function pageHorizontalPadding(): number {
   return isCompactLayout() ? 20 : UiSpace.PAGE_HORIZONTAL
 }
@@ -35,6 +41,9 @@ export function contentMaxWidth(): number {
 }
 
 export function readingMaxWidth(): number {
+  if (isWideLayout()) {
+    return LayoutMetrics.WIDE_READING_MAX_WIDTH
+  }
   return isCompactLayout() ? 720 : LayoutMetrics.READING_MAX_WIDTH
 }
 

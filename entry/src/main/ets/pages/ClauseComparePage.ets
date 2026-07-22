@@ -3,7 +3,7 @@ import { back, goContractChat, RouteParams } from '../app/AppRouter'
 import { API_BASE_URL } from '../common/constants'
 import { AppError } from '../common/errors'
 import { logError, logInfo } from '../common/logger'
-import { readingMaxWidth } from '../common/ui/LayoutHelpers'
+import { isWideLayout, readingMaxWidth } from '../common/ui/LayoutHelpers'
 import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
 import { GhostButton, PrimaryButton } from '../components/ActionButtons'
 import { ClauseBlock } from '../components/ClauseBlock'
@@ -108,7 +108,8 @@ struct ClauseComparePage {
                 suggestion: this.currentClause.suggestion ?? '',
                 legalBasis: this.currentClause.legalBasis ?? '',
                 anchorText: this.buildAnchorText(this.currentClause),
-                riskLevel: this.currentClause.riskLevel
+                riskLevel: this.currentClause.riskLevel,
+                splitLayout: isWideLayout()
               })
             }
             .width('100%')

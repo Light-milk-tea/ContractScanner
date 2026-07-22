@@ -3,7 +3,7 @@ import { BusinessError } from '@kit.BasicServicesKit'
 import { picker } from '@kit.CoreFileKit'
 import { photoAccessHelper } from '@kit.MediaLibraryKit'
 
-import { back, goAnalyzing, RouteParams } from '../app/AppRouter'
+import { back, goAnalyzing, goDocumentScan, RouteParams } from '../app/AppRouter'
 import {
   API_BASE_URL,
   isEmulatorRuntime,
@@ -11,7 +11,7 @@ import {
   resolveDefaultApiBaseUrl,
   resolveEffectiveApiBaseUrl
 } from '../common/constants'
-import { AppError } from '../common/errors'
+import { AppError, ErrorCode } from '../common/errors'
 import { logError, logInfo } from '../common/logger'
 import { isCompactLayout } from '../common/ui/LayoutHelpers'
 import { UiColors, UiFont, UiRadius, UiSpace } from '../common/ui/DesignTokens'
@@ -27,7 +27,9 @@ import { ImportVM } from '../model/viewmodel/ImportVM'
 import { ContractApi } from '../services/api/ContractApi'
 import { ServiceHealthProbe } from '../services/api/ServiceHealthProbe'
 import { MockContractService } from '../services/mock/MockContractService'
-import { FileImportService } from '../services/parser/FileImportService'
+import { ContractOcrService } from '../services/ocr/ContractOcrService'
+import { PendingScanStore } from '../services/ocr/PendingScanStore'
+import { FileImportService, ImportedFileMeta } from '../services/parser/FileImportService'
 import { CacheService } from '../services/storage/CacheService'
 import { UserSettingsService } from '../services/storage/UserSettingsService'
 
@@ -50,14 +52,24 @@ struct ImportPage {
   @State demoModeNoticeText: string = '当前未启用异常演示模式。'
   @State demoModeNoticeColor: string = UiColors.TEXT_SECONDARY
   @State showMoreImportOptions: boolean = false
+  @State isRecognizingText: boolean = false
 
   fileImportService: FileImportService = new FileImportService()
   serviceHealthProbe: ServiceHealthProbe = new ServiceHealthProbe()
   cacheService: CacheService = new CacheService()
   userSettingsService: UserSettingsService = new UserSettingsService()
+  ocrService: ContractOcrService = new ContractOcrService()
 
   aboutToAppear(): void {
     this.initializePage()
+  }
+
+  onPageShow(): void {
+    this.consumePendingScanResult()
+  }
+
+  aboutToDisappear(): void {
+    void this.ocrService.release()
   }
 
   build() {
@@ -85,9 +97,9 @@ struct ImportPage {
             }) {
               Row() {
                 SegmentChip({
-                  label: '拍照',
+                  label: '扫描',
                   selected: this.importVM.selectedSource === 'CAMERA',
-                  isEnabled: !this.isSubmitting,
+                  isEnabled: !this.isSubmitting && !this.isRecognizingText,
                   onTap: () => {
                     this.handleSourceSelection('CAMERA')
                   }
@@ -263,7 +275,14 @@ struct ImportPage {
           .width('100%')
         }
 
-        if (this.isSubmitting) {
+        if (this.isRecognizingText) {
+          LoadingState({
+            title: '正在识别文字',
+            description: '正在从合同图片中提取正文，请稍候。'
+          })
+        }
+
+        if (this.isSubmitting && !this.isRecognizingText) {
           LoadingState({
             title: '正在提交分析任务',
             description: '正在校验文件并向服务端创建任务。'
@@ -301,8 +320,8 @@ struct ImportPage {
 
         Column({ space: UiSpace.MD }) {
           PrimaryButton({
-            label: this.isSubmitting ? '提交中...' : '开始分析',
-            isEnabled: !this.isSubmitting,
+            label: this.isRecognizingText ? '识别中...' : (this.isSubmitting ? '提交中...' : '开始分析'),
+            isEnabled: !this.isSubmitting && !this.isRecognizingText,
             fillWidth: true,
             onTap: () => {
               this.startAnalyze()
@@ -351,12 +370,16 @@ struct ImportPage {
         'ImportPage'
       )
       const meta = this.fileImportService.parseFile(this.fileUri, this.fileName)
+      if (this.fileImportService.isUnsupportedBinaryDocument(meta) &&
+        !this.fileImportService.isInlineTextUri(meta.fileUri)) {
+        this.errorText = '当前暂不支持直接解析 PDF/DOCX，请导出为图片或 TXT 后导入。'
+        this.isSubmitting = false
+        return
+      }
+
       const uploadRequest = this.fileImportService.buildUploadRequest(meta, this.selectedBusinessTag())
       uploadRequest.debugMode = this.demoFaultMode
-      if (this.fileImportService.isTextFile(meta) && !this.fileImportService.isInlineTextUri(meta.fileUri)) {
-        const textContent = this.fileImportService.readTextFile(meta.fileUri)
-        uploadRequest.fileUri = this.fileImportService.buildInlineTextUri(textContent)
-      }
+      uploadRequest.fileUri = await this.resolveUploadUri(meta)
       this.importVM.setSelectedFile(meta.fileName, uploadRequest.fileType, meta.fileUri)
 
       const hostContext = this.getHostContext()
@@ -389,7 +412,25 @@ struct ImportPage {
       this.canContinueDemo = true
     } finally {
       this.isSubmitting = false
+      this.isRecognizingText = false
     }
+  }
+
+  async resolveUploadUri(meta: ImportedFileMeta): Promise<string> {
+    if (this.fileImportService.isInlineTextUri(meta.fileUri)) {
+      return meta.fileUri
+    }
+    if (this.fileImportService.isTextFile(meta)) {
+      const textContent = this.fileImportService.readTextFile(meta.fileUri)
+      return this.fileImportService.buildInlineTextUri(textContent)
+    }
+    if (this.fileImportService.isImageFile(meta)) {
+      this.isRecognizingText = true
+      const textContent = await this.ocrService.recognizeTextFromUri(meta.fileUri)
+      this.isRecognizingText = false
+      return this.fileImportService.buildInlineTextUri(textContent)
+    }
+    throw new AppError(ErrorCode.IMPORT_001, '当前文件无法提取正文，请改用图片或 TXT', meta.fileUri)
   }
 
   async ensureReachableServiceBaseUrl(): Promise<boolean> {
@@ -420,7 +461,7 @@ struct ImportPage {
 
   async openSelectedSourcePicker(): Promise<void> {
     if (this.importVM.selectedSource === 'CAMERA') {
-      await this.selectPhotoFromPicker(true, '拍照合同.jpg')
+      await goDocumentScan(this.getUIContext())
       return
     }
     if (this.importVM.selectedSource === 'GALLERY') {
@@ -430,9 +471,23 @@ struct ImportPage {
     await this.selectLocalFile()
   }
 
+  consumePendingScanResult(): void {
+    const pending = PendingScanStore.consumePending()
+    if (pending === undefined) {
+      return
+    }
+    this.importVM.setSelectedSource('CAMERA')
+    this.fileName = pending.fileName
+    this.fileUri = this.fileImportService.buildInlineTextUri(pending.textContent)
+    this.selectedDemoPreset = DemoSamplePreset.NONE
+    this.errorText = ''
+    this.importVM.setSelectedFile(pending.fileName, 'jpg', this.fileUri)
+    logInfo(`Consumed pending scan text, length=${pending.textContent.length}`, 'ImportPage')
+  }
+
   importActionLabel(): string {
     if (this.importVM.selectedSource === 'CAMERA') {
-      return '拍照'
+      return '扫描合同'
     }
     if (this.importVM.selectedSource === 'GALLERY') {
       return '从相册选择'
@@ -442,12 +497,12 @@ struct ImportPage {
 
   importActionDescription(): string {
     if (this.importVM.selectedSource === 'CAMERA') {
-      return '拍摄合同照片，支持常见图片格式。'
+      return '使用文档扫描拍摄纸质合同，自动识别文字后分析。'
     }
     if (this.importVM.selectedSource === 'GALLERY') {
-      return '从相册选择合同图片。'
+      return '从相册选择合同图片，将自动识别文字。'
     }
-    return '支持 PDF、DOCX、文本及常见图片格式。'
+    return '支持 TXT/Markdown 及常见图片；PDF/DOCX 请先导出为图片或文本。'
   }
 
   async selectLocalFile(): Promise<void> {

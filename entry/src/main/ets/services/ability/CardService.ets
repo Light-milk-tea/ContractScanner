@@ -17,6 +17,9 @@ export interface CardSnapshot {
   baseUrl: string
   actionText: string
   source: string
+  redCount: number
+  yellowCount: number
+  greenCount: number
 }
 
 class CardFormData {
@@ -29,6 +32,9 @@ class CardFormData {
   pageUrl: string = ''
   entrySource: string = ''
   actionText: string = ''
+  redCount: number = 0
+  yellowCount: number = 0
+  greenCount: number = 0
 }
 
 export class CardService {
@@ -37,14 +43,17 @@ export class CardService {
 
   buildDefaultSnapshot(): CardSnapshot {
     const snapshot: CardSnapshot = {
-      pageUrl: RoutePath.HOME,
+      pageUrl: RoutePath.MAIN_SHELL,
       contractName: '暂无最近分析结果',
       statusText: '完成一次分析并进入结果页后，这里会展示最近合同摘要。',
       generatedAt: '',
       taskId: '',
       baseUrl: '',
       actionText: '打开应用',
-      source: 'card'
+      source: 'card',
+      redCount: 0,
+      yellowCount: 0,
+      greenCount: 0
     }
     return snapshot
   }
@@ -69,6 +78,9 @@ export class CardService {
     formData.pageUrl = snapshot.pageUrl
     formData.entrySource = snapshot.source
     formData.actionText = snapshot.actionText
+    formData.redCount = snapshot.redCount
+    formData.yellowCount = snapshot.yellowCount
+    formData.greenCount = snapshot.greenCount
     return formData
   }
 
@@ -146,20 +158,29 @@ export class CardService {
   }
 
   mapContractToSnapshot(contract: Contract): CardSnapshot {
+    const redCount = contract.redCount ?? 0
+    const yellowCount = contract.yellowCount ?? 0
+    const greenCount = contract.greenCount ?? 0
     const snapshot: CardSnapshot = {
       pageUrl: RoutePath.RESULT_OVERVIEW,
       contractName: contract.contractName,
-      statusText: this.statusText(contract.status),
+      statusText: this.statusText(contract.status, redCount, yellowCount, greenCount),
       generatedAt: contract.createdAt ?? '生成时间待更新',
       taskId: contract.taskId,
       baseUrl: contract.baseUrl ?? '',
       actionText: '查看结果总览',
-      source: 'card'
+      source: 'card',
+      redCount: redCount,
+      yellowCount: yellowCount,
+      greenCount: greenCount
     }
     return snapshot
   }
 
-  statusText(status?: AnalyzeStatus): string {
+  statusText(status?: AnalyzeStatus, redCount: number = 0, yellowCount: number = 0, greenCount: number = 0): string {
+    if (status === AnalyzeStatus.SUCCESS || (redCount + yellowCount + greenCount) > 0) {
+      return `红 ${redCount} · 黄 ${yellowCount} · 绿 ${greenCount}，可继续阅读`
+    }
     switch (status) {
       case AnalyzeStatus.PENDING:
         return '状态：等待开始'
@@ -167,8 +188,6 @@ export class CardService {
         return '状态：OCR 处理中'
       case AnalyzeStatus.LLM_RUNNING:
         return '状态：模型分析中'
-      case AnalyzeStatus.SUCCESS:
-        return '状态：分析完成，可点击继续阅读'
       case AnalyzeStatus.FAILED:
         return '状态：分析失败，请回到应用重试'
       default:

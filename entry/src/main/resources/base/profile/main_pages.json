@@ -1,7 +1,9 @@
 {
   "src": [
+    "pages/MainShellPage",
     "pages/HomePage",
     "pages/ImportPage",
+    "pages/DocumentScanPage",
     "pages/AnalyzingPage",
     "pages/ResultOverviewPage",
     "pages/ClauseComparePage",

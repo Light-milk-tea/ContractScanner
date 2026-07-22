@@ -19,6 +19,10 @@
     {
       "name": "EntryFormAbility_label",
       "value": "合同摘要"
+    },
+    {
+      "name": "camera_permission_reason",
+      "value": "用于扫描纸质合同并识别文字，完成合同解读。"
     }
   ]
 }

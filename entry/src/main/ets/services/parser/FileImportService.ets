@@ -54,6 +54,14 @@ export class FileImportService {
     return meta.fileType === ImportFileType.TEXT
   }
 
+  isImageFile(meta: ImportedFileMeta): boolean {
+    return meta.fileType === ImportFileType.IMAGE
+  }
+
+  isUnsupportedBinaryDocument(meta: ImportedFileMeta): boolean {
+    return meta.fileType === ImportFileType.PDF || meta.fileType === ImportFileType.DOCX
+  }
+
   isInlineTextUri(fileUri: string): boolean {
     return fileUri.indexOf('inline://') === 0
   }

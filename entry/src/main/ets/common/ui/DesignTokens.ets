@@ -71,6 +71,8 @@ export class UiShadow {
 export class LayoutMetrics {
   static readonly CONTENT_MAX_WIDTH: number = 940
   static readonly READING_MAX_WIDTH: number = 820
+  /** 宽屏条款对照分栏可用宽度 */
+  static readonly WIDE_READING_MAX_WIDTH: number = 1280
   static readonly BUTTON_HEIGHT: number = 48
   static readonly NAV_ICON_SIZE: number = 36
   static readonly RISK_BAR_WIDTH: number = 3
