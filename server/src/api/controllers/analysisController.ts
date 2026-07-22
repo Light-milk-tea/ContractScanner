@@ -115,6 +115,19 @@ async function processAnalysisTask(taskId: string): Promise<void> {
   try {
     analysisTaskRepo.updateStatus(taskId, 'OCR_RUNNING')
     const ocrResult = extractContractText(taskRecord.request)
+    console.log(
+      `[OCR] taskId=${taskId} source=${ocrResult.source} fileType=${taskRecord.request.fileType} textLength=${ocrResult.text.length}`
+    )
+    if (ocrResult.source === 'fallback-template') {
+      const fileType = (taskRecord.request.fileType ?? '').toLowerCase()
+      const isPdfOrDocx = fileType.indexOf('pdf') >= 0 || fileType.indexOf('docx') >= 0
+      if (isPdfOrDocx) {
+        throw new Error('当前暂不支持直接解析 PDF/DOCX，请导出为图片或 TXT 后导入')
+      }
+      console.warn(
+        `[OCR] taskId=${taskId} falling back to template text; client should send inline:// for real content`
+      )
+    }
     const cleanedText = cleanContractText(ocrResult.text)
     analysisTaskRepo.setCleanedText(taskId, cleanedText)
     const clauseHints = splitClauses(cleanedText)
