@@ -23,6 +23,8 @@ import { ContractApi } from '../services/api/ContractApi'
 import { CardService } from '../services/ability/CardService'
 import { ContinuePayload, ContinueService } from '../services/ability/ContinueService'
 import { PrivacyGuardService } from '../services/ability/PrivacyGuardService'
+import { DocReportBuilder } from '../services/report/DocReportBuilder'
+import { ReportExportService } from '../services/report/ReportExportService'
 import { CacheService } from '../services/storage/CacheService'
 import { UserSettingsService } from '../services/storage/UserSettingsService'
 
@@ -36,12 +38,16 @@ struct ResultOverviewPage {
   @State isUsingDemoResult: boolean = false
   @State privacyGuardEnabled: boolean = false
   @State resultContentOpacity: number = 0
+  @State isExportingReport: boolean = false
+  @State exportHint: string = ''
 
   resultVM: ResultVM = new ResultVM()
   cacheService: CacheService = new CacheService()
   cardService: CardService = new CardService()
   continueService: ContinueService = new ContinueService()
   privacyGuardService: PrivacyGuardService = new PrivacyGuardService()
+  reportBuilder: DocReportBuilder = new DocReportBuilder()
+  reportExportService: ReportExportService = new ReportExportService()
 
   aboutToAppear(): void {
     this.loadResult()
@@ -119,7 +125,7 @@ struct ResultOverviewPage {
               .width('100%')
           }
 
-          Column() {
+          Column({ space: UiSpace.MD }) {
             SummaryCard({
               contractName: this.currentResult.contractName,
               overallSummary: this.currentResult.overallSummary,
@@ -129,6 +135,22 @@ struct ResultOverviewPage {
               yellowCount: this.currentResult.riskStats.yellow,
               greenCount: this.currentResult.riskStats.green
             })
+
+            GhostButton({
+              label: this.isExportingReport ? '正在导出…' : '导出 Word 报告',
+              isEnabled: !this.isExportingReport,
+              fillWidth: true,
+              onTap: () => {
+                this.exportDocReport()
+              }
+            })
+
+            if (this.exportHint.length > 0) {
+              Text(this.exportHint)
+                .fontSize(UiFont.CAPTION)
+                .fontColor(UiColors.TEXT_SECONDARY)
+                .width('100%')
+            }
           }
           .width('100%')
           .opacity(this.resultContentOpacity)
@@ -225,6 +247,7 @@ struct ResultOverviewPage {
     this.resultVM.setError('')
     this.isLoading = true
     this.errorText = ''
+    this.exportHint = ''
     this.isUsingDemoResult = false
 
     try {
@@ -290,6 +313,42 @@ struct ResultOverviewPage {
     params.baseUrl = this.resultVM.baseUrl
     params.clauseId = clauseId
     await goClauseCompare(this.getUIContext(), params)
+  }
+
+  async exportDocReport(): Promise<void> {
+    if (this.currentResult === undefined || this.isExportingReport) {
+      return
+    }
+
+    const hostContext = this.getHostContext()
+    if (hostContext === undefined) {
+      this.exportHint = '当前页面上下文不可用，暂时无法导出报告'
+      return
+    }
+
+    this.isExportingReport = true
+    this.exportHint = ''
+    try {
+      const docContent = this.reportBuilder.build(this.currentResult)
+      const fileName = this.reportBuilder.buildFileName(this.currentResult.contractName)
+      const savedUri = await this.reportExportService.saveDoc(hostContext, fileName, docContent)
+      if (savedUri.length === 0) {
+        this.exportHint = '已取消导出'
+        return
+      }
+      this.exportHint = '报告已保存为 .doc，可用 WPS / 文档 App 打开'
+      logInfo(`Export doc report ok: taskId=${this.currentResult.taskId}`, 'ResultOverviewPage')
+    } catch (error) {
+      if (error instanceof AppError) {
+        this.exportHint = error.message
+        logError('Export doc report failed', error.details ?? '', 'ResultOverviewPage')
+      } else {
+        this.exportHint = '导出报告失败，请稍后重试'
+        logError('Export doc report failed', JSON.stringify(error), 'ResultOverviewPage')
+      }
+    } finally {
+      this.isExportingReport = false
+    }
   }
 
   async readParams(): Promise<RouteParams> {
